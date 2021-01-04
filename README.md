@@ -1,5 +1,5 @@
 # HaploNet
-Framework. Gaussian Mixture Variational Autoencoder (GMVAE).
+HaploNet is a framework for inferring haplotype and population structure using neural networks in an unsupervised approach for phased haplotypes of whole-genome sequencing (WGS) data. We utilize a variational autoencoder (VAE) framework to learn mappings to and from a low-dimensional latent space in which we will perform indirect clustering of haplotypes with a Gaussian mixture prior (Gaussian Mixture Variational Autoencoder).
 
 *Support for unphased genotypes is coming soon.*
 
@@ -52,9 +52,22 @@ e <- eigen(C)
 plot(e$vectors[,1:2], main="PCA - HaploNet", xlab="PC1", ylab="PC2")
 ```
 
-### Estimate ancestry proportions
-First the neural network log-likelihoods have to be generated for each chromosome. Then the admixture proportions can be estimated afterwards, e.g. *K=2* using 64 threads.
+### Estimate ancestry proportions and haplotype cluster frequencies
+First the neural network log-likelihoods have to be generated for each chromosome.
 ```bash
-python sampling.py -models chr1/haplonet/models/ -x chr1/chr1.npy -like -out haplonet
-python admixNN.py -folder ./ -like haplonet.loglike.npy -K 2 -t 64 -seed 1 -out haplonet.admixture
+for i in {1..22}
+do
+  python sampling.py -models chr${i}/haplonet/models/ -x chr${i}/chr${i}.npy -like -out haplonet
+done
+```
+Then the EM algorithm in HaploNet can be run with *K=2* and 64 threads.
+```bash
+python admixNN.py -folder ./ -like haplonet.loglike.npy -K 2 -t 64 -seed 1 -out haplonet.admixture.k2
+```
+
+And the admixture proportions can be plotted in R as follows:
+```R
+library(RcppCNPy)
+q <- npyLoad("haplonet.admixture.k2.q.npy")
+barplot(t(q), space=0, border=NA, col=c("dodgerblue3", "firebrick2"), xlab="Individuals", ylab="Proportions", main="HaploNet")
 ```
