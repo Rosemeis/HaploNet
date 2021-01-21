@@ -51,10 +51,10 @@ parser.add_argument("-split", type=float, default=1.0,
 	help="Ratio of training/validation")
 parser.add_argument("-patience", type=int, default=9,
 	help="Patience for validation loss")
+parser.add_argument("-overlap", action="store_true",
+	help="Overlap genomic windows")
 parser.add_argument("-threads", type=int,
 	help="Number of threads")
-parser.add_argument("-workers", type=int, default=0,
-	help="Number of workers to use in data-loader")
 parser.add_argument("-out",
 	help="Output path")
 args = parser.parse_args()
@@ -85,6 +85,7 @@ if args.save_models:
 # Read genotype matrix
 G = np.load(args.geno)
 m, n = G.shape
+print("Loaded " + str(n) + " chromosomes and " + str(m) + " variants.")
 
 
 ### Loss functions
@@ -133,6 +134,11 @@ if (m % args.x_dim) < args.x_dim//2:
 	nSeg = m//args.x_dim
 else:
 	nSeg = ceil(m/args.x_dim)
+if args.overlap:
+	nSeg = 2*nSeg-1
+	print("Training " + str(nSeg) + " overlapping windows.\n")
+else:
+	print("Training " + str(nSeg) + " windows.\n")
 Z = torch.empty((n, nSeg, args.z_dim)) # Means
 V = torch.empty((n, nSeg, args.z_dim)) # Logvars
 Y = torch.empty((n, nSeg, args.y_dim)) # Components
@@ -140,11 +146,21 @@ Y = torch.empty((n, nSeg, args.y_dim)) # Components
 for i in range(nSeg):
 	st = time()
 	print('Chromosome segment {}/{}'.format(i+1, nSeg))
+
 	# Load segment
-	if i == (nSeg-1):
-		segG = torch.from_numpy(G[(i*args.x_dim):].T.astype(np.float32))
+	if args.overlap:
+		if (i % 2) == 0:
+			if i == (nSeg-1):
+				segG = torch.from_numpy(G[((i//2)*args.x_dim):].T.astype(np.float32))
+			else:
+				segG = torch.from_numpy(G[((i//2)*args.x_dim):(((i//2)+1)*args.x_dim)].T.astype(np.float32))
+		else:
+			segG = torch.from_numpy(G[((i//2)*args.x_dim + args.x_dim//2):(((i+1)//2)*args.x_dim + args.x_dim//2)])
 	else:
-		segG = torch.from_numpy(G[(i*args.x_dim):((i+1)*args.x_dim)].T.astype(np.float32))
+		if i == (nSeg-1):
+			segG = torch.from_numpy(G[(i*args.x_dim):].T.astype(np.float32))
+		else:
+			segG = torch.from_numpy(G[(i*args.x_dim):((i+1)*args.x_dim)].T.astype(np.float32))
 
 	# Construct sets
 	if args.split < 1.0:
@@ -152,17 +168,18 @@ for i in range(nSeg):
 		nTrain = permVec[:int(n*args.split)]
 		nValid = permVec[int(n*args.split):]
 		trainLoad = DataLoader(segG[nTrain], batch_size=args.bs, shuffle=True, \
-								pin_memory=True, num_workers=args.workers)
+								pin_memory=True)
 		validLoad = DataLoader(segG[nValid], batch_size=args.bs)
 		patLoss = float('Inf')
 		pat = 0
 	else:
 		# Training set
-		trainLoad = DataLoader(segG, batch_size=args.bs, shuffle=True, pin_memory=True, \
-								num_workers=args.workers)
+		trainLoad = DataLoader(segG, batch_size=args.bs, shuffle=True, \
+								pin_memory=True)
 
 	# Define model
-	model = haploModel.HaploNet(segG.size(1), args.h_dim, args.z_dim, args.y_dim, args.temp)
+	model = haploModel.HaploNet(segG.size(1), args.h_dim, args.z_dim, \
+								args.y_dim, args.temp)
 	model.to(dev)
 	optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
@@ -181,12 +198,12 @@ for i in range(nSeg):
 				pat = 0
 		if args.debug:
 			if args.split < 1.0:
-				print('Epoch: {}, Train Loss: {:.4f}, Valid Loss: {:.4f}'.format(epoch+1, tLoss, vLoss))
+				print('Epoch: {}, Train -ELBO: {:.4f}, Valid -ELBO: {:.4f}'.format(epoch+1, tLoss, vLoss))
 			else:
-				print('Epoch: {}, Train Loss: {:.4f}'.format(epoch+1, tLoss))
-	print('Epoch: {}, Train Loss: {:.4f}'.format(epoch+1, tLoss))
+				print('Epoch: {}, Train -ELBO: {:.4f}'.format(epoch+1, tLoss))
+	print('Epoch: {}, Train -ELBO: {:.4f}'.format(epoch+1, tLoss))
 	if args.split < 1.0:
-		print('Epoch: {}, Valid Loss: {:.4f}'.format(epoch+1, vLoss))
+		print('Epoch: {}, Valid -ELBO: {:.4f}'.format(epoch+1, vLoss))
 	print('Time elapsed: {:.4f}'.format(time()-st))
 
 	# Save latent and model
