@@ -23,7 +23,7 @@ class HaploNet(nn.Module):
 		# Classification - q(y | x)
 		self.classify = nn.Sequential(
 			nn.Linear(x_dim, h_dim),
-			nn.ELU(),
+			nn.ReLU(),
 			nn.BatchNorm1d(h_dim),
 			nn.Linear(h_dim, y_dim)
 		)
@@ -31,7 +31,7 @@ class HaploNet(nn.Module):
 		# Encoder - q(z | x, y)
 		self.encoder = nn.Sequential(
 			nn.Linear(x_dim + y_dim, h_dim),
-			nn.ELU(),
+			nn.ReLU(),
 			nn.BatchNorm1d(h_dim)
 		)
 		self.encoder_m = nn.Linear(h_dim, z_dim)
@@ -44,7 +44,7 @@ class HaploNet(nn.Module):
 		# Decoder - p(x | z)
 		self.decoder = nn.Sequential(
 			nn.Linear(z_dim, h_dim),
-			nn.ELU(),
+			nn.ReLU(),
 			nn.BatchNorm1d(h_dim),
 			nn.Linear(h_dim, x_dim)
 		)
@@ -62,14 +62,14 @@ class HaploNet(nn.Module):
 	def forward(self, x):
 		y_logits = self.classify(x)
 		y = self.reparameterize_gumbel(y_logits, self.temp)
+		p_m = self.prior_m(y)
+		p_v = self.prior_v(y)
 		e = self.encoder(torch.cat((x, y), dim=1))
 		z_m = self.encoder_m(e)
 		z_v = self.encoder_v(e)
 		z = self.reparameterize_gaussian(z_m, z_v)
-		p_m = self.prior_m(y)
-		p_v = self.prior_v(y)
-		return self.decoder(z), z, z_m, z_v, \
-				p_m, p_v, F.softmax(y_logits, dim=1)
+		return self.decoder(z), z, z_m, z_v, p_m, p_v, \
+				F.softmax(y_logits, dim=1)
 
 	# Generate mu and y
 	def generateLatent(self, x):
@@ -80,7 +80,8 @@ class HaploNet(nn.Module):
 	# Generate likelihoods - p(x | y) \propto p(x | p_m(y))
 	def generateLikelihoods(self, x, eye):
 		return torch.stack([-torch.sum(F.binary_cross_entropy_with_logits( \
-							self.decoder(self.prior_m(eye[i].repeat(x.size(0), 1))), x, reduction='none'), dim=1) \
+							self.decoder(self.prior_m(eye[i].repeat(\
+								x.size(0), 1))), x, reduction='none'), dim=1) \
 							for i in range(self.y_dim)], dim=1)
 
 	# Sample and reconstruct

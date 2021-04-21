@@ -26,14 +26,14 @@ parser.add_argument("geno",
 parser.add_argument("-x_dim", type=int, default=1024,
 	help="Dimension of input data - window size")
 parser.add_argument("-h_dim", type=int, default=256,
-	help="Dimension of hidden layer")
+	help="Dimension of hidden layers")
 parser.add_argument("-z_dim", type=int, default=64,
 	help="Dimension of latent representation")
 parser.add_argument("-y_dim", type=int, default=16,
 	help="Number of mixing components")
 parser.add_argument("-bs", type=int, default=128,
 	help="Batch size for NN")
-parser.add_argument("-epochs", type=int, default=200,
+parser.add_argument("-epochs", type=int, default=250,
 	help="Number of epochs")
 parser.add_argument("-lr", type=float, default=1e-3,
 	help="Learning rate for Adam")
@@ -43,6 +43,8 @@ parser.add_argument("-temp", type=float, default=0.1,
 	help="Temperature in Gumbel-Softmax")
 parser.add_argument("-cuda", action="store_true",
 	help="Toggle GPU training")
+parser.add_argument("-seed", type=int,
+	help="Set NumPy seed")
 parser.add_argument("-debug", action="store_true",
 	help="Print losses")
 parser.add_argument("-save_models", action="store_true",
@@ -53,22 +55,26 @@ parser.add_argument("-patience", type=int, default=9,
 	help="Patience for validation loss")
 parser.add_argument("-overlap", action="store_true",
 	help="Overlap genomic windows")
+parser.add_argument("-like", action="store_true",
+	help="Generate NN likelihoods (p(x | y))")
+parser.add_argument("-prior", action="store_true",
+	help="Save means of priors (E[p(z | y)])")
 parser.add_argument("-threads", type=int,
 	help="Number of threads")
 parser.add_argument("-out",
 	help="Output path")
 args = parser.parse_args()
 
-### HaploNet ###
+##### HaploNet #####
 print('HaploNet - Gaussian Mixture Variational Autoencoder')
 
 # Global variables
 LOG2PI = 2*log(pi)
-LOGK = log(args.y_dim)
-
 if args.threads is not None:
 	torch.set_num_threads(args.threads)
 	torch.set_num_interop_threads(args.threads)
+if args.seed is not None:
+	np.random.seed(args.seed)
 
 # Check parsing
 if args.cuda:
@@ -98,17 +104,17 @@ def log_normal(z, mu, logvar):
 def elbo(recon_x, x, z, z_m, z_v, p_m, p_v, y, beta):
 	rec_loss = torch.sum(F.binary_cross_entropy_with_logits(recon_x, x, reduction='none'), dim=1)
 	gau_loss = log_normal(z, z_m, z_v) - log_normal(z, p_m, p_v)
-	cat_loss = torch.sum(y*torch.log(torch.clamp(y, min=1e-8)), dim=1) + LOGK
+	cat_loss = torch.sum(y*torch.log(torch.clamp(y, min=1e-8)), dim=1)
 	return torch.mean(rec_loss + gau_loss + beta*cat_loss)
 
 
-### Training
+### Training steps
 # Define training step
 def train_epoch(train_loader, model, optimizer, beta, device):
 	train_loss = 0.0
 	for data in train_loader:
 		optimizer.zero_grad()
-		batch_x = data.to(device)
+		batch_x = data.to(device, non_blocking=True)
 		recon_x, z, z_m, z_v, p_m, p_v, y = model(batch_x)
 		loss = elbo(recon_x, batch_x, z, z_m, z_v, p_m, p_v, y, beta)
 		loss.backward()
@@ -122,14 +128,15 @@ def valid_epoch(valid_loader, model, beta, device):
 	model.eval()
 	with torch.no_grad():
 		for data in valid_loader:
-			batch_x = data.to(device)
+			batch_x = data.to(device, non_blocking=True)
 			recon_x, z, z_m, z_v, p_m, p_v, y = model(batch_x)
 			loss = elbo(recon_x, batch_x, z, z_m, z_v, p_m, p_v, y, beta)
 			valid_loss += loss.item()
 	model.train()
 	return valid_loss/len(valid_loader)
 
-# Train models
+
+### Construct containers
 if (m % args.x_dim) < args.x_dim//2:
 	nSeg = m//args.x_dim
 else:
@@ -142,10 +149,19 @@ else:
 Z = torch.empty((n, nSeg, args.z_dim)) # Means
 V = torch.empty((n, nSeg, args.z_dim)) # Logvars
 Y = torch.empty((n, nSeg, args.y_dim)) # Components
+if args.like:
+	L = torch.empty((nSeg, n, args.y_dim)) # Log-likelihoods
+	Y_eye = torch.eye(args.y_dim) # Cluster labels
+if args.prior:
+	P = torch.empty((args.y_dim, nSeg, args.z_dim)) # Prior means
+	if 'Y_eye' not in vars():
+		Y_eye = torch.eye(args.y_dim) # Cluster labels
 
+
+### Training
 for i in range(nSeg):
 	st = time()
-	print('Chromosome segment {}/{}'.format(i+1, nSeg))
+	print('Window {}/{}'.format(i+1, nSeg))
 
 	# Load segment
 	if args.overlap:
@@ -183,7 +199,7 @@ for i in range(nSeg):
 	model.to(dev)
 	optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-	# Run training and validation
+	# Run training (and validation)
 	for epoch in range(args.epochs):
 		tLoss = train_epoch(trainLoad, model, optimizer, args.beta, dev)
 		if args.split < 1.0:
@@ -204,7 +220,7 @@ for i in range(nSeg):
 	print('Epoch: {}, Train -ELBO: {:.4f}'.format(epoch+1, tLoss))
 	if args.split < 1.0:
 		print('Epoch: {}, Valid -ELBO: {:.4f}'.format(epoch+1, vLoss))
-	print('Time elapsed: {:.4f}'.format(time()-st))
+	print('Time elapsed: {:.4f}'.format(time()-st) + '\n')
 
 	# Save latent and model
 	model.to(torch.device('cpu'))
@@ -212,10 +228,20 @@ for i in range(nSeg):
 	with torch.no_grad():
 		z, v, y = model.generateLatent(segG)
 		Z[:,i,:], V[:,i,:], Y[:,i,:] = z.detach(), v.detach(), y.detach()
+		if args.like:
+			l = model.generateLikelihoods(segG, Y_eye)
+			L[i,:,:] = l.detach()
+		if args.prior:
+			p = model.prior_m(Y_eye)
+			P[:,i,:] = p.detach()
 	if args.save_models:
 		torch.save(model.state_dict(), args.out + '/models/seg' + str(i) + '.pt')
 
-# Saving latent spaces
+### Saving tensors
 np.save(args.out + '.z', Z.numpy())
 np.save(args.out + '.v', V.numpy())
 np.save(args.out + '.y', Y.numpy())
+if args.like:
+	np.save(args.out + '.loglike', L.numpy())
+if args.prior:
+	np.save(args.out + '.z.prior', P.numpy())
