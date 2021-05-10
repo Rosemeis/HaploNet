@@ -22,7 +22,7 @@ class HaploNet(nn.Module):
 
 		# Classification - q(y | x)
 		self.classify = nn.Sequential(
-			nn.Linear(x_dim, h_dim),
+			nn.Linear(x_dim, h_dim, bias=False),
 			nn.ReLU(),
 			nn.BatchNorm1d(h_dim),
 			nn.Linear(h_dim, y_dim)
@@ -30,7 +30,7 @@ class HaploNet(nn.Module):
 
 		# Encoder - q(z | x, y)
 		self.encoder = nn.Sequential(
-			nn.Linear(x_dim + y_dim, h_dim),
+			nn.Linear(x_dim + y_dim, h_dim, bias=False),
 			nn.ReLU(),
 			nn.BatchNorm1d(h_dim)
 		)
@@ -43,7 +43,7 @@ class HaploNet(nn.Module):
 
 		# Decoder - p(x | z)
 		self.decoder = nn.Sequential(
-			nn.Linear(z_dim, h_dim),
+			nn.Linear(z_dim, h_dim, bias=False),
 			nn.ReLU(),
 			nn.BatchNorm1d(h_dim),
 			nn.Linear(h_dim, x_dim)

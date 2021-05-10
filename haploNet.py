@@ -29,15 +29,15 @@ parser.add_argument("-h_dim", type=int, default=256,
 	help="Dimension of hidden layers")
 parser.add_argument("-z_dim", type=int, default=64,
 	help="Dimension of latent representation")
-parser.add_argument("-y_dim", type=int, default=16,
+parser.add_argument("-y_dim", type=int, default=12,
 	help="Number of mixing components")
 parser.add_argument("-bs", type=int, default=128,
 	help="Batch size for NN")
-parser.add_argument("-epochs", type=int, default=250,
+parser.add_argument("-epochs", type=int, default=200,
 	help="Number of epochs")
 parser.add_argument("-lr", type=float, default=1e-3,
 	help="Learning rate for Adam")
-parser.add_argument("-beta", type=float, default=0.1,
+parser.add_argument("-beta", type=float, default=1.0,
 	help="Weight on categorical loss")
 parser.add_argument("-temp", type=float, default=0.1,
 	help="Temperature in Gumbel-Softmax")
@@ -55,8 +55,8 @@ parser.add_argument("-patience", type=int, default=9,
 	help="Patience for validation loss")
 parser.add_argument("-overlap", action="store_true",
 	help="Overlap genomic windows")
-parser.add_argument("-like", action="store_true",
-	help="Generate NN likelihoods (p(x | y))")
+parser.add_argument("-latent", action="store_true",
+	help="Save latent spaces")
 parser.add_argument("-prior", action="store_true",
 	help="Save means of priors (E[p(z | y)])")
 parser.add_argument("-threads", type=int,
@@ -146,16 +146,14 @@ if args.overlap:
 	print("Training " + str(nSeg) + " overlapping windows.\n")
 else:
 	print("Training " + str(nSeg) + " windows.\n")
-Z = torch.empty((n, nSeg, args.z_dim)) # Means
-V = torch.empty((n, nSeg, args.z_dim)) # Logvars
-Y = torch.empty((n, nSeg, args.y_dim)) # Components
-if args.like:
-	L = torch.empty((nSeg, n, args.y_dim)) # Log-likelihoods
-	Y_eye = torch.eye(args.y_dim) # Cluster labels
+L = torch.empty((nSeg, n, args.y_dim)) # Log-likelihoods
+Y_eye = torch.eye(args.y_dim) # Cluster labels
+if args.latent:
+	Z = torch.empty((nSeg, n, args.z_dim)) # Means
+	V = torch.empty((nSeg, n, args.z_dim)) # Logvars
+	Y = torch.empty((nSeg, n, args.y_dim)) # Components
 if args.prior:
-	P = torch.empty((args.y_dim, nSeg, args.z_dim)) # Prior means
-	if 'Y_eye' not in vars():
-		Y_eye = torch.eye(args.y_dim) # Cluster labels
+	P = torch.empty((nSeg, args.y_dim, args.z_dim)) # Prior means
 
 
 ### Training
@@ -167,16 +165,16 @@ for i in range(nSeg):
 	if args.overlap:
 		if (i % 2) == 0:
 			if i == (nSeg-1):
-				segG = torch.from_numpy(G[((i//2)*args.x_dim):].T.astype(np.float32))
+				segG = torch.from_numpy(G[((i//2)*args.x_dim):].T.astype(np.float32, order="C"))
 			else:
-				segG = torch.from_numpy(G[((i//2)*args.x_dim):(((i//2)+1)*args.x_dim)].T.astype(np.float32))
+				segG = torch.from_numpy(G[((i//2)*args.x_dim):(((i//2)+1)*args.x_dim)].T.astype(np.float32, order="C"))
 		else:
-			segG = torch.from_numpy(G[((i//2)*args.x_dim + args.x_dim//2):(((i+1)//2)*args.x_dim + args.x_dim//2)])
+			segG = torch.from_numpy(G[((i//2)*args.x_dim + args.x_dim//2):(((i+1)//2)*args.x_dim + args.x_dim//2)].T.astype(np.float32, order="C"))
 	else:
 		if i == (nSeg-1):
-			segG = torch.from_numpy(G[(i*args.x_dim):].T.astype(np.float32))
+			segG = torch.from_numpy(G[(i*args.x_dim):].T.astype(np.float32, order="C"))
 		else:
-			segG = torch.from_numpy(G[(i*args.x_dim):((i+1)*args.x_dim)].T.astype(np.float32))
+			segG = torch.from_numpy(G[(i*args.x_dim):((i+1)*args.x_dim)].T.astype(np.float32, order="C"))
 
 	# Construct sets
 	if args.split < 1.0:
@@ -226,22 +224,22 @@ for i in range(nSeg):
 	model.to(torch.device('cpu'))
 	model.eval()
 	with torch.no_grad():
-		z, v, y = model.generateLatent(segG)
-		Z[:,i,:], V[:,i,:], Y[:,i,:] = z.detach(), v.detach(), y.detach()
-		if args.like:
-			l = model.generateLikelihoods(segG, Y_eye)
-			L[i,:,:] = l.detach()
+		l = model.generateLikelihoods(segG, Y_eye)
+		L[i,:,:] = l.detach()
+		if args.latent:
+			z, v, y = model.generateLatent(segG)
+			Z[i,:,:], V[i,:,:], Y[i,:,:] = z.detach(), v.detach(), y.detach()
 		if args.prior:
 			p = model.prior_m(Y_eye)
-			P[:,i,:] = p.detach()
+			P[i,:,:] = p.detach()
 	if args.save_models:
 		torch.save(model.state_dict(), args.out + '/models/seg' + str(i) + '.pt')
 
 ### Saving tensors
-np.save(args.out + '.z', Z.numpy())
-np.save(args.out + '.v', V.numpy())
-np.save(args.out + '.y', Y.numpy())
-if args.like:
-	np.save(args.out + '.loglike', L.numpy())
+np.save(args.out + '.loglike', L.numpy())
+if args.latent:
+	np.save(args.out + '.z', Z.numpy())
+	np.save(args.out + '.v', V.numpy())
+	np.save(args.out + '.y', Y.numpy())
 if args.prior:
 	np.save(args.out + '.z.prior', P.numpy())

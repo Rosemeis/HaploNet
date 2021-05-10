@@ -12,10 +12,11 @@ python setup.py build_ext --inplace
 ```
 
 ### Dependencies
-The HaploNet framework relies on the following Python packages that you can install through pip or conda:
+The HaploNet framework relies on the following Python packages that you can install through conda (recommended) or pip:
 
 - [PyTorch](https://pytorch.org/get-started/locally/)
 - NumPy
+- Cython
 - scikit-allel
 
 Follow the link to find more information on how to install PyTorch for your setup (GPU/CPU).
@@ -29,19 +30,32 @@ python generateNPYfromVCF.py -vcf chr1.vcf.gz -out chr1
 
 HaploNet can now be trained directly on the generated haplotype matrix as follows (using default parameters and on GPU):
 ```bash
-python haploNet.py chr1.npy -cuda -save_models -out haplonet
+python haploNet.py chr1.npy -cuda -out haplonet
 ```
-The '-save_models' parameter is needed for some downstream analysis. See available options in HaploNet with the following command:
+HaploNet outputs the neural network log-likelihoods by default which are used to infer global population structure (PCA and admixture). With the '-latent' argument, the parameters of the learnt latent spaces of the GMVAE can be saved as well. See all available options in HaploNet with the following command:
 ```bash
 python haploNet.py -h
 ```
 
-All the following analyses assume a directory structure with a folder for each chromosome, e.g. *chr1/haplonet.z.npy* will be the mean latent spaces for windows of chromosome 1 inferred by HaploNet.
+All the following analyses assume a directory structure with a folder for each chromosome, e.g. *chr1/haplonet.loglike.npy* will be the neural network log-likelihoods for all windows of chromosome 1 inferred by HaploNet.
+
+### Estimate ancestry proportions and haplotype cluster frequencies
+The EM algorithm in HaploNet can be run with *K=2* and 64 threads (CPU based).
+```bash
+python admixNN.py -folder ./ -like haplonet.loglike.npy -K 2 -t 64 -seed 0 -out haplonet.admixture.k2
+```
+
+And the admixture proportions can as an example be plotted in R as follows:
+```R
+library(RcppCNPy)
+q <- npyLoad("haplonet.admixture.k2.q.npy")
+barplot(t(q), space=0, border=NA, col=c("dodgerblue3", "firebrick2"), xlab="Individuals", ylab="Proportions", main="HaploNet - Admixture")
+```
 
 ### Infer population structure using PCA
 Compute the covariance matrix followed by eigendecomposition in R (using the RcppCNPy library):
 ```bash
-python computeDist.py -folder ./ -latent haplonet -out haplonet
+python covarNN.py -folder ./ -like haplonet.loglike.npy -t 64 -out haplonet
 ```
 ```R
 library(RcppCNPy)
@@ -50,25 +64,5 @@ e <- eigen(C)
 plot(e$vectors[,1:2], main="PCA - HaploNet", xlab="PC1", ylab="PC2")
 ```
 
-### Estimate ancestry proportions and haplotype cluster frequencies
-First the neural network log-likelihoods have to be generated for each chromosome.
-```bash
-for i in {1..22}
-do
-  python sampling.py -models chr${i}/haplonet/models/ -x chr${i}/chr${i}.npy -like -out haplonet
-done
-```
-Then the EM algorithm in HaploNet can be run with *K=2* and 64 threads.
-```bash
-python admixNN.py -folder ./ -like haplonet.loglike.npy -K 2 -t 64 -seed 1 -out haplonet.admixture.k2
-```
-
-And the admixture proportions can be plotted in R as follows:
-```R
-library(RcppCNPy)
-q <- npyLoad("haplonet.admixture.k2.q.npy")
-barplot(t(q), space=0, border=NA, col=c("dodgerblue3", "firebrick2"), xlab="Individuals", ylab="Proportions", main="HaploNet")
-```
-
 ## Tutorial
-A full tutorial and description of all the features of HaploNet can be found on [popgen.dk](http://www.popgen.dk/software/index.php/HaploNet).
+A full tutorial and description of all the features of HaploNet will soon be available on [popgen.dk](http://www.popgen.dk/software/index.php/HaploNet).

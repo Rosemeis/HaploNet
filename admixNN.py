@@ -8,7 +8,7 @@ __author__ = "Jonas Meisner"
 # Libraries
 import numpy as np
 import argparse
-import admixNN_cy
+import shared_cy
 
 # Argparse
 parser = argparse.ArgumentParser()
@@ -24,6 +24,8 @@ parser.add_argument("-tole", type=float, default=0.1,
 	help="Difference in loglike between args.check iterations")
 parser.add_argument("-no_accel", action="store_true",
 	help="Turn off SqS3 acceleration")
+parser.add_argument("-n_chr", type=int, default=22,
+	help="Number of chromosomes/scaffolds")
 parser.add_argument("-t", type=int, default=1,
 	help="Number of threads")
 parser.add_argument("-check", type=int, default=50,
@@ -35,28 +37,28 @@ parser.add_argument("-out",
 args = parser.parse_args()
 
 # Function for EM step
-def emStep(L, F, Q, Fnew, Qnew, Psum, t):
-	admixNN_cy.emLoop(L, F, Q, Fnew, Qnew, Psum, t)
-	admixNN_cy.updateQ(Qnew, Q, t)
+def emStep(L, F, Q, Fnew, Qnew, t):
+	shared_cy.emLoop(L, F, Q, Fnew, Qnew, t)
+	shared_cy.updateQ(Qnew, Q, t)
 
 # Function for EM step
-def emStepAccel(L, F, Q, Fnew, Qnew, Psum, diffF, diffQ, t):
+def emStepAccel(L, F, Q, Fnew, Qnew, diffF, diffQ, t):
 	Fprev = np.copy(F)
 	Qprev = np.copy(Q)
-	admixNN_cy.emLoop(L, F, Q, Fnew, Qnew, Psum, t)
-	admixNN_cy.updateQ(Qnew, Q, t)
-	admixNN_cy.matMinusF(F, Fprev, diffF)
-	admixNN_cy.matMinusQ(Q, Qprev, diffQ)
+	shared_cy.emLoop(L, F, Q, Fnew, Qnew, t)
+	shared_cy.updateQ(Qnew, Q, t)
+	shared_cy.matMinusF(F, Fprev, diffF)
+	shared_cy.matMinusQ(Q, Qprev, diffQ)
 
 
 ##### HaploNet - EM #####
-print("HaploNet - EM algorithm")
+print("HaploNet - EM algorithm - K=" + str(args.K))
 print("Estimating ancestry proportions and window-based haplotype frequencies.")
 
 # Load data (and concatentate across windows)
 if args.folder is not None:
 	L = np.load(args.folder + "/chr1/" + args.like)
-	for i in range(2, 23):
+	for i in range(2, args.n_chr + 1):
 		L = np.concatenate((L, np.load(args.folder + "/chr" + str(i) + "/" + \
 							args.like)), axis=0)
 else:
@@ -70,8 +72,6 @@ Q = np.random.rand(N//2, args.K).astype(np.float32)
 Q /= np.sum(Q, axis=1, keepdims=True)
 F = np.random.rand(W, args.K, C).astype(np.float32)
 F /= np.sum(F, axis=2, keepdims=True)
-P = np.zeros((W, N, args.K, C), dtype=np.float32)
-Psum = np.zeros((W, N), dtype=np.float32)
 Qnew = np.zeros((W, N//2, args.K), dtype=np.float32)
 Fnew = np.zeros((W, args.K, C), dtype=np.float32)
 logVec = np.zeros(W, dtype=np.float32)
@@ -94,35 +94,32 @@ for i in range(args.iter):
 	# SqS3 - EM acceleration
 	if not args.no_accel:
 		if i == 0:
-			emStep(L, F, Q, Fnew, Qnew, Psum, args.t)
+			emStep(L, F, Q, Fnew, Qnew, args.t)
 		F0 = np.copy(F)
 		Q0 = np.copy(Q)
 
 		# Acceleration step 1
-		emStepAccel(L, F, Q, Fnew, Qnew, Psum, diffF_1, diffQ_1, args.t)
-		sr2_F = admixNN_cy.matSumSquareF(diffF_1)
-		sr2_Q = admixNN_cy.matSumSquareQ(diffQ_1)
+		emStepAccel(L, F, Q, Fnew, Qnew, diffF_1, diffQ_1, args.t)
+		sr2 = shared_cy.matSumSquareF(diffF_1) + shared_cy.matSumSquareQ(diffQ_1)
 
 		# Acceleration step 2
-		emStepAccel(L, F, Q, Fnew, Qnew, Psum, diffF_2, diffQ_2, args.t)
-		admixNN_cy.matMinusF(diffF_2, diffF_1, diffF_3)
-		admixNN_cy.matMinusQ(diffQ_2, diffQ_1, diffQ_3)
-		sv2_F = admixNN_cy.matSumSquareF(diffF_3)
-		sv2_Q = admixNN_cy.matSumSquareQ(diffQ_3)
-		alpha_F = max(1.0, np.sqrt(sr2_F/sv2_F))
-		alpha_Q = max(1.0, np.sqrt(sr2_Q/sv2_Q))
+		emStepAccel(L, F, Q, Fnew, Qnew, diffF_2, diffQ_2, args.t)
+		shared_cy.matMinusF(diffF_2, diffF_1, diffF_3)
+		shared_cy.matMinusQ(diffQ_2, diffQ_1, diffQ_3)
+		sv2 = shared_cy.matSumSquareF(diffF_3) + shared_cy.matSumSquareQ(diffQ_3)
+		alpha = max(1.0, np.sqrt(sr2/sv2))
 
 		# Update matrices and map to domain
-		admixNN_cy.accelUpdateF(F, F0, diffF_1, diffF_3, alpha_F, args.t)
-		admixNN_cy.accelUpdateQ(Q, Q0, diffQ_1, diffQ_3, alpha_Q, args.t)
+		shared_cy.accelUpdateF(F, F0, diffF_1, diffF_3, alpha, args.t)
+		shared_cy.accelUpdateQ(Q, Q0, diffQ_1, diffQ_3, alpha, args.t)
 	else:
-		emStep(L, F, Q, Fnew, Qnew, Psum, args.t)
+		emStep(L, F, Q, Fnew, Qnew, args.t)
 	if i == 0:
-		admixNN_cy.logLike(L, F, Q, logVec, args.t)
+		shared_cy.logLike(L, F, Q, logVec, args.t)
 		curLL = np.sum(logVec)
 		print("Iteration " + str(i+1) + ": " + str(curLL))
 	if (i+1) % args.check == 0:
-		admixNN_cy.logLike(L, F, Q, logVec, args.t)
+		shared_cy.logLike(L, F, Q, logVec, args.t)
 		newLL = np.sum(logVec)
 		print("Iteration " + str(i+1) + ": " + str(newLL))
 		if abs(newLL - curLL) < args.tole:
@@ -131,5 +128,6 @@ for i in range(args.iter):
 		curLL = newLL
 
 # Save Q and F
-np.save(args.out + ".q", Q.astype(float))
+np.savetxt(args.out + ".q", Q, fmt="%.7f")
 np.save(args.out + ".f", F.astype(float))
+print("Saved admixture proportions as " + args.out + ".q")

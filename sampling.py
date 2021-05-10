@@ -1,4 +1,6 @@
 """
+TODO: Not up to date.
+
 HaploNet.
 Gaussian Mixture Variational Autoencoder for modelling LD structure.
 Script for sampling chromosomes, reconstructing priors or generating likelihoods.
