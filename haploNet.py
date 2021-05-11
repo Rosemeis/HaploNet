@@ -29,7 +29,7 @@ parser.add_argument("-h_dim", type=int, default=256,
 	help="Dimension of hidden layers")
 parser.add_argument("-z_dim", type=int, default=64,
 	help="Dimension of latent representation")
-parser.add_argument("-y_dim", type=int, default=16,
+parser.add_argument("-y_dim", type=int, default=20,
 	help="Number of mixing components")
 parser.add_argument("-bs", type=int, default=128,
 	help="Batch size for NN")
