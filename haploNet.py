@@ -29,7 +29,7 @@ parser.add_argument("-h_dim", type=int, default=256,
 	help="Dimension of hidden layers")
 parser.add_argument("-z_dim", type=int, default=64,
 	help="Dimension of latent representation")
-parser.add_argument("-y_dim", type=int, default=12,
+parser.add_argument("-y_dim", type=int, default=16,
 	help="Number of mixing components")
 parser.add_argument("-bs", type=int, default=128,
 	help="Batch size for NN")
@@ -37,7 +37,7 @@ parser.add_argument("-epochs", type=int, default=200,
 	help="Number of epochs")
 parser.add_argument("-lr", type=float, default=1e-3,
 	help="Learning rate for Adam")
-parser.add_argument("-beta", type=float, default=1.0,
+parser.add_argument("-beta", type=float, default=0.1,
 	help="Weight on categorical loss")
 parser.add_argument("-temp", type=float, default=0.1,
 	help="Temperature in Gumbel-Softmax")
