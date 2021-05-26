@@ -18,6 +18,7 @@ The HaploNet framework relies on the following Python packages that you can inst
 - NumPy
 - Cython
 - scikit-allel
+- SciPy (for PCA)
 
 Follow the link to find more information on how to install PyTorch for your setup (GPU/CPU).
 
@@ -53,16 +54,21 @@ barplot(t(q), space=0, border=NA, col=c("dodgerblue3", "firebrick2"), xlab="Indi
 ```
 
 ### Infer population structure using PCA
-Compute the covariance matrix followed by eigendecomposition in R (using the RcppCNPy library):
+Estimate eigenvectors directly using SVD (recommended for big datasets):
 ```bash
-python covarNN.py -folder ./ -like haplonet.loglike.npy -t 64 -out haplonet
+python pcaNN.py -folder ./ -like haplonet.loglike.npy -t 64 -out haplonet
 ```
 ```R
-library(RcppCNPy)
-C <- npyLoad("haplonet.cov.npy")
+e <- as.matrix(read.table("haplonet.eigenvecs"))
+plot(e[,1:2], main="PCA - HaploNet", xlab="PC1", ylab="PC2")
+```
+
+Compute the covariance matrix followed by eigendecomposition in R:
+```bash
+python pcaNN.py -folder ./ -like haplonet.loglike.npy -cov -t 64 -out haplonet
+```
+```R
+C <- as.matrix(read.table("haplonet.cov"))
 e <- eigen(C)
 plot(e$vectors[,1:2], main="PCA - HaploNet", xlab="PC1", ylab="PC2")
 ```
-
-## Tutorial
-A full tutorial and description of all the features of HaploNet will soon be available on [popgen.dk](http://www.popgen.dk/software/index.php/HaploNet).

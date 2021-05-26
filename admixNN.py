@@ -26,7 +26,7 @@ parser.add_argument("-no_accel", action="store_true",
 	help="Turn off SqS3 acceleration")
 parser.add_argument("-n_chr", type=int, default=22,
 	help="Number of chromosomes/scaffolds")
-parser.add_argument("-t", type=int, default=1,
+parser.add_argument("-threads", type=int, default=1,
 	help="Number of threads")
 parser.add_argument("-check", type=int, default=50,
 	help="Calculating loglike for the args.check operation")
@@ -94,32 +94,32 @@ for i in range(args.iter):
 	# SqS3 - EM acceleration
 	if not args.no_accel:
 		if i == 0:
-			emStep(L, F, Q, Fnew, Qnew, args.t)
+			emStep(L, F, Q, Fnew, Qnew, args.threads)
 		F0 = np.copy(F)
 		Q0 = np.copy(Q)
 
 		# Acceleration step 1
-		emStepAccel(L, F, Q, Fnew, Qnew, diffF_1, diffQ_1, args.t)
+		emStepAccel(L, F, Q, Fnew, Qnew, diffF_1, diffQ_1, args.threads)
 		sr2 = shared_cy.matSumSquareF(diffF_1) + shared_cy.matSumSquareQ(diffQ_1)
 
 		# Acceleration step 2
-		emStepAccel(L, F, Q, Fnew, Qnew, diffF_2, diffQ_2, args.t)
+		emStepAccel(L, F, Q, Fnew, Qnew, diffF_2, diffQ_2, args.threads)
 		shared_cy.matMinusF(diffF_2, diffF_1, diffF_3)
 		shared_cy.matMinusQ(diffQ_2, diffQ_1, diffQ_3)
 		sv2 = shared_cy.matSumSquareF(diffF_3) + shared_cy.matSumSquareQ(diffQ_3)
 		alpha = max(1.0, np.sqrt(sr2/sv2))
 
 		# Update matrices and map to domain
-		shared_cy.accelUpdateF(F, F0, diffF_1, diffF_3, alpha, args.t)
-		shared_cy.accelUpdateQ(Q, Q0, diffQ_1, diffQ_3, alpha, args.t)
+		shared_cy.accelUpdateF(F, F0, diffF_1, diffF_3, alpha, args.threads)
+		shared_cy.accelUpdateQ(Q, Q0, diffQ_1, diffQ_3, alpha, args.threads)
 	else:
-		emStep(L, F, Q, Fnew, Qnew, args.t)
+		emStep(L, F, Q, Fnew, Qnew, args.threads)
 	if i == 0:
-		shared_cy.logLike(L, F, Q, logVec, args.t)
+		shared_cy.logLike(L, F, Q, logVec, args.threads)
 		curLL = np.sum(logVec)
 		print("Iteration " + str(i+1) + ": " + str(curLL))
 	if (i+1) % args.check == 0:
-		shared_cy.logLike(L, F, Q, logVec, args.t)
+		shared_cy.logLike(L, F, Q, logVec, args.threads)
 		newLL = np.sum(logVec)
 		print("Iteration " + str(i+1) + ": " + str(newLL))
 		if abs(newLL - curLL) < args.tole:

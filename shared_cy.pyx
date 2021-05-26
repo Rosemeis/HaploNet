@@ -187,18 +187,31 @@ cpdef accelUpdateF(float[:,:,::1] F, float[:,:,::1] F0, float[:,:,::1] diff1, \
 					F[w, k, c] /= sumY
 
 
-##### Cython functions for covariance estimation in HaploNet #####
+##### Cython functions for PCA in HaploNet #####
+# Standardize cluster matrix
 @boundscheck(False)
 @wraparound(False)
-cpdef covarianceY(signed char[:,::1] Y, float[::1] F, float[:,::1] C, int t):
-	cdef int N = Y.shape[0]
-	cdef int S = Y.shape[1]
+cpdef standardizeY(signed char[:,::1] L, float[::1] F, float[:,::1] Y, int t):
+	cdef int N = L.shape[0]
+	cdef int S = L.shape[1]
+	cdef int i, s
+	with nogil:
+		for i in prange(N, num_threads=t):
+			for s in range(S):
+				Y[i, s] = (L[i, s] - 2*F[s])/sqrt(2*F[s]*(1 - F[s]))
+
+# Covariance estimation
+@boundscheck(False)
+@wraparound(False)
+cpdef covarianceY(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
+	cdef int N = L.shape[0]
+	cdef int S = L.shape[1]
 	cdef int i, j, s
 	with nogil:
 		for i in prange(N, num_threads=t):
 			for j in range(i, N):
 				for s in range(S):
-					C[i, j] += (Y[i, s] - 2*F[s])*(Y[j, s] - 2*F[s])/ \
+					C[i, j] += (L[i, s] - 2*F[s])*(L[j, s] - 2*F[s])/ \
 								(2*F[s]*(1 - F[s]))
 				C[i, j] /= float(S)
 				C[j, i] = C[i, j]
