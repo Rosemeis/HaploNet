@@ -88,7 +88,7 @@ else:
 	U, s, V = svds(Y, k=args.e)
 
 	# Save matrices
-	np.savetxt(args.out + ".eigenvecs", U, fmt="%.7f")
+	np.savetxt(args.out + ".eigenvecs", U[:, ::-1], fmt="%.7f")
 	print("Saved eigenvectors as " + args.out + ".eigenvecs.")
 	np.savetxt(args.out + ".eigenvals", s**2/float(Y.shape[1]), fmt="%.7f")
 	print("Saved eigenvalues as " + args.out + ".eigenvals.")
