@@ -147,7 +147,7 @@ if args.overlap:
 else:
 	print("Training " + str(nSeg) + " windows.\n")
 L = torch.empty((nSeg, n, args.y_dim)) # Log-likelihoods
-Y_eye = torch.eye(args.y_dim) # Cluster labels
+Y_eye = torch.eye(args.y_dim).to(dev) # Cluster labels
 if args.latent:
 	Z = torch.empty((nSeg, n, args.z_dim)) # Means
 	V = torch.empty((nSeg, n, args.z_dim)) # Logvars
@@ -183,7 +183,8 @@ for i in range(nSeg):
 		nValid = permVec[int(n*args.split):]
 		trainLoad = DataLoader(segG[nTrain], batch_size=args.bs, shuffle=True, \
 								pin_memory=True)
-		validLoad = DataLoader(segG[nValid], batch_size=args.bs)
+		validLoad = DataLoader(segG[nValid], batch_size=args.bs, \
+								pin_memory=True)
 		patLoss = float('Inf')
 		pat = 0
 	else:
@@ -221,19 +222,39 @@ for i in range(nSeg):
 	print('Time elapsed: {:.4f}'.format(time()-st) + '\n')
 
 	# Save latent and model
-	model.to(torch.device('cpu'))
 	model.eval()
+	batch_n = ceil(n/args.bs)
+	saveLoad = DataLoader(segG, batch_size=args.bs, pin_memory=True)
 	with torch.no_grad():
-		l = model.generateLikelihoods(segG, Y_eye)
-		L[i,:,:] = l.detach()
-		if args.latent:
-			z, v, y = model.generateLatent(segG)
-			Z[i,:,:], V[i,:,:], Y[i,:,:] = z.detach(), v.detach(), y.detach()
+		for it, data in enumerate(saveLoad):
+			# Generate likelihoods
+			batch_x = data.to(dev, non_blocking=True)
+			batch_l = model.generateLikelihoods(batch_x, Y_eye)
+			if it == (batch_n - 1):
+				L[i,it*args.bs:,:] = batch_l.to(torch.device('cpu')).detach()
+			else:
+				L[i,it*args.bs:(it+1)*args.bs,:] = batch_l.to(torch.device('cpu')).detach()
+
+			# Generate latent spaces
+			if args.latent:
+				batch_z, batch_v, batch_y = model.generateLatent(batch_x)
+				if it == (batch_n - 1):
+					Z[i,it*args.bs:,:] = batch_z.to(torch.device('cpu')).detach()
+					V[i,it*args.bs:,:] = batch_v.to(torch.device('cpu')).detach()
+					Y[i,it*args.bs:,:] = batch_y.to(torch.device('cpu')).detach()
+				else:
+					Z[i,it*args.bs:(it+1)*args.bs,:] = batch_z.to(torch.device('cpu')).detach()
+					V[i,it*args.bs:(it+1)*args.bs,:] = batch_v.to(torch.device('cpu')).detach()
+					Y[i,it*args.bs:(it+1)*args.bs,:] = batch_y.to(torch.device('cpu')).detach()
 		if args.prior:
 			p = model.prior_m(Y_eye)
-			P[i,:,:] = p.detach()
+			P[i,:,:] = p.to(torch.device('cpu')).detach()
 	if args.save_models:
+		model.to(torch.device('cpu'))
 		torch.save(model.state_dict(), args.out + '/models/seg' + str(i) + '.pt')
+
+	# Release memory
+	del segG
 
 ### Saving tensors
 np.save(args.out + '.loglike', L.numpy())
