@@ -191,26 +191,27 @@ cpdef accelUpdateF(float[:,:,::1] F, float[:,:,::1] F0, float[:,:,::1] diff1, \
 # Standardize cluster matrix
 @boundscheck(False)
 @wraparound(False)
-cpdef standardizeY(signed char[:,::1] L, float[::1] F, int t):
+cpdef standardizeY(signed char[:,::1] L, float[::1] F, float[:,::1] Y, int t):
 	cdef int N = L.shape[0]
 	cdef int S = L.shape[1]
 	cdef int i, s
 	with nogil:
 		for i in prange(N, num_threads=t):
 			for s in range(S):
-				L[i, s] = (L[i, s] - 2*F[s])/sqrt(2*F[s]*(1 - F[s]))
+				Y[i, s] = (L[i, s] - 2*F[s])/sqrt(2*F[s]*(1 - F[s]))
 
 # Standardize unphased cluster matrix
 @boundscheck(False)
 @wraparound(False)
-cpdef standardizeY_unphased(signed char[:,::1] L, float[::1] F, int t):
+cpdef standardizeY_unphased(signed char[:,::1] L, float[::1] F, \
+							float[:,::1] Y, int t):
 	cdef int N = L.shape[0]
 	cdef int S = L.shape[1]
 	cdef int i, s
 	with nogil:
 		for i in prange(N, num_threads=t):
 			for s in range(S):
-				L[i, s] = (L[i, s] - F[s])/sqrt(F[s]*(1 - F[s]))
+				Y[i, s] = (L[i, s] - F[s])/sqrt(F[s]*(1 - F[s]))
 
 # Covariance estimation
 @boundscheck(False)

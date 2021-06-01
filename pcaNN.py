@@ -88,18 +88,19 @@ if args.cov:
 	print("Saved covariance matrix as " + args.out + ".cov")
 else:
 	from scipy.sparse.linalg import svds
+	Y = np.empty(L.shape, dtype=np.float32)
 	if args.unphased:
-		shared_cy.standardizeY_unphased(L, F, args.threads)
+		shared_cy.standardizeY_unphased(L, F, Y, args.threads)
 	else:
-		shared_cy.standardizeY(L, F, args.threads)
+		shared_cy.standardizeY(L, F, Y, args.threads)
 
 	# Perform SVD
 	print("Performing truncated SVD, extracting " + str(args.e) + \
 			" eigenvectors.")
-	U, s, V = svds(L, k=args.e)
+	U, s, V = svds(Y, k=args.e)
 
 	# Save matrices
 	np.savetxt(args.out + ".eigenvecs", U[:, ::-1], fmt="%.7f")
 	print("Saved eigenvectors as " + args.out + ".eigenvecs.")
-	np.savetxt(args.out + ".eigenvals", s[::-1]**2/float(L.shape[1]), fmt="%.7f")
+	np.savetxt(args.out + ".eigenvals", s[::-1]**2/float(Y.shape[1]), fmt="%.7f")
 	print("Saved eigenvalues as " + args.out + ".eigenvals.")
