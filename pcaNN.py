@@ -24,6 +24,8 @@ parser.add_argument("-e", type=int, default=10,
 	help="Number of eigenvectors to extract")
 parser.add_argument("-cov", action="store_true",
 	help="Estimate covariance matrix instead of SVD")
+parser.add_argument("-unphased", action="store_true",
+	help="Toggle for unphased genotype data")
 parser.add_argument("-threads", type=int, default=1,
 	help="Number of threads")
 parser.add_argument("-out",
@@ -58,7 +60,11 @@ F /= float(N)
 # Construct data matrix
 L = np.swapaxes(L, 0, 1)
 L = L.reshape(N, W*C)
-L = L[0::2] + L[1::2]
+if args.unphased:
+	print("Assuming unphased genotype data.")
+else:
+	L = L[0::2] + L[1::2]
+	N = N//2
 
 # Filter out low frequency haplotype clusters
 mask = F > args.filter
@@ -68,27 +74,32 @@ print("After filtering with threshold (" + str(args.filter) + "): ", L.shape)
 
 # Covariance mode
 if args.cov:
-	Cov = np.zeros((N//2, N//2), dtype=np.float32)
+	Cov = np.zeros((N, N), dtype=np.float32)
 
 	# Estimate covariance matrix
 	print("Estimating covariance matrix.")
-	shared_cy.covarianceY(L, F, Cov, args.threads)
+	if args.unphased:
+		shared_cy.covarianceY_unphased(L, F, Cov, args.threads)
+	else:
+		shared_cy.covarianceY(L, F, Cov, args.threads)
 
 	# Save covariance matrix
 	np.savetxt(args.out + ".cov", Cov, fmt="%.7f")
 	print("Saved covariance matrix as " + args.out + ".cov")
 else:
 	from scipy.sparse.linalg import svds
-	Y = np.empty(L.shape, dtype=np.float32)
-	shared_cy.standardizeY(L, F, Y, args.threads)
+	if args.unphased:
+		shared_cy.standardizeY_unphased(L, F, args.threads)
+	else:
+		shared_cy.standardizeY(L, F, args.threads)
 
 	# Perform SVD
 	print("Performing truncated SVD, extracting " + str(args.e) + \
 			" eigenvectors.")
-	U, s, V = svds(Y, k=args.e)
+	U, s, V = svds(L, k=args.e)
 
 	# Save matrices
 	np.savetxt(args.out + ".eigenvecs", U[:, ::-1], fmt="%.7f")
 	print("Saved eigenvectors as " + args.out + ".eigenvecs.")
-	np.savetxt(args.out + ".eigenvals", s[::-1]**2/float(Y.shape[1]), fmt="%.7f")
+	np.savetxt(args.out + ".eigenvals", s[::-1]**2/float(L.shape[1]), fmt="%.7f")
 	print("Saved eigenvalues as " + args.out + ".eigenvals.")

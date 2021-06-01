@@ -36,7 +36,7 @@ cpdef emLoop(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
 							pSum = pSum + L[w, i+a, c]*F[w, k, c]*Q[i//2, k]
 					for k in range(K):
 						for c in range(C):
-							if pSum > 1e-8:
+							if pSum > 1e-7:
 								postKY = L[w, i+a, c]*F[w, k, c]*Q[i//2, k]/pSum
 								Fnew[w, k, c] += postKY
 								Qnew[w, i//2, k] += postKY
@@ -191,14 +191,26 @@ cpdef accelUpdateF(float[:,:,::1] F, float[:,:,::1] F0, float[:,:,::1] diff1, \
 # Standardize cluster matrix
 @boundscheck(False)
 @wraparound(False)
-cpdef standardizeY(signed char[:,::1] L, float[::1] F, float[:,::1] Y, int t):
+cpdef standardizeY(signed char[:,::1] L, float[::1] F, int t):
 	cdef int N = L.shape[0]
 	cdef int S = L.shape[1]
 	cdef int i, s
 	with nogil:
 		for i in prange(N, num_threads=t):
 			for s in range(S):
-				Y[i, s] = (L[i, s] - 2*F[s])/sqrt(2*F[s]*(1 - F[s]))
+				L[i, s] = (L[i, s] - 2*F[s])/sqrt(2*F[s]*(1 - F[s]))
+
+# Standardize unphased cluster matrix
+@boundscheck(False)
+@wraparound(False)
+cpdef standardizeY_unphased(signed char[:,::1] L, float[::1] F, int t):
+	cdef int N = L.shape[0]
+	cdef int S = L.shape[1]
+	cdef int i, s
+	with nogil:
+		for i in prange(N, num_threads=t):
+			for s in range(S):
+				L[i, s] = (L[i, s] - F[s])/sqrt(F[s]*(1 - F[s]))
 
 # Covariance estimation
 @boundscheck(False)
@@ -213,5 +225,21 @@ cpdef covarianceY(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
 				for s in range(S):
 					C[i, j] += (L[i, s] - 2*F[s])*(L[j, s] - 2*F[s])/ \
 								(2*F[s]*(1 - F[s]))
+				C[i, j] /= float(S)
+				C[j, i] = C[i, j]
+
+# Covariance estimation - unphased
+@boundscheck(False)
+@wraparound(False)
+cpdef covarianceY_unphased(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
+	cdef int N = L.shape[0]
+	cdef int S = L.shape[1]
+	cdef int i, j, s
+	with nogil:
+		for i in prange(N, num_threads=t):
+			for j in range(i, N):
+				for s in range(S):
+					C[i, j] += (L[i, s] - F[s])*(L[j, s] - F[s])/ \
+								(F[s]*(1 - F[s]))
 				C[i, j] /= float(S)
 				C[j, i] = C[i, j]
