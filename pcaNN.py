@@ -16,7 +16,7 @@ parser.add_argument("-folder",
 	help="Path to chromosome folders")
 parser.add_argument("-like",
 	help="Filename of log-likelihood files")
-parser.add_argument("-filter", type=float, default=0.01,
+parser.add_argument("-filter", type=float, default=0.001,
 	help="Threshold for haplotype cluster frequency")
 parser.add_argument("-n_chr", type=int, default=22,
 	help="Number of chromosomes/scaffolds")

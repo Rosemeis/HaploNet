@@ -116,11 +116,11 @@ for i in range(args.iter):
 		emStep(L, F, Q, Fnew, Qnew, args.threads)
 	if i == 0:
 		shared_cy.logLike(L, F, Q, logVec, args.threads)
-		curLL = np.sum(logVec)
+		curLL = np.sum(logVec, dtype=float)
 		print("Iteration " + str(i+1) + ": " + str(curLL))
-	if (i+1) % args.check == 0:
+	if (i > 0) and ((i+1) % args.check == 0):
 		shared_cy.logLike(L, F, Q, logVec, args.threads)
-		newLL = np.sum(logVec)
+		newLL = np.sum(logVec, dtype=float)
 		print("Iteration " + str(i+1) + ": " + str(newLL))
 		if abs(newLL - curLL) < args.tole:
 			print("EM algorithm converged.")

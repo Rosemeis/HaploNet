@@ -113,7 +113,7 @@ def elbo(recon_x, x, z, z_m, z_v, p_m, p_v, y, beta):
 def train_epoch(train_loader, model, optimizer, beta, device):
 	train_loss = 0.0
 	for data in train_loader:
-		optimizer.zero_grad()
+		optimizer.zero_grad(set_to_none=True)
 		batch_x = data.to(device, non_blocking=True)
 		recon_x, z, z_m, z_v, p_m, p_v, y = model(batch_x)
 		loss = elbo(recon_x, batch_x, z, z_m, z_v, p_m, p_v, y, beta)

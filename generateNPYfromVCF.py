@@ -28,7 +28,7 @@ G = vcf['calldata/GT']
 # Save .npy file in np.int8
 if args.unphased:
     print("Saving unphased genotypes as " + args.out + ".npy")
-    np.save(args.out, np.sum(G, axis=2)//2)
+    np.save(args.out, np.sum(G, axis=2).astype(np.int8))
 else:
     print("Saving phased genotypes as " + args.out + ".npy")
     np.save(args.out, G.reshape(G.shape[0], -1))
