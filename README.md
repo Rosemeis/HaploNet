@@ -38,25 +38,24 @@ HaploNet outputs the neural network log-likelihoods by default which are used to
 python haploNet.py -h
 ```
 
-All the following analyses assume a directory structure with a folder for each chromosome, e.g. *chr1/haplonet.loglike.npy* will be the neural network log-likelihoods for all windows of chromosome 1 inferred by HaploNet.
+All the following analyses assume that HaploNet has been run for all chromosomes such that the filepaths of the log-likelihoods for each chromosomes are in one file. The argument "-like" can be used if you only have one file.
 
 ### Estimate ancestry proportions and haplotype cluster frequencies
 The EM algorithm in HaploNet can be run with *K=2* and 64 threads (CPU based).
 ```bash
-python admixNN.py -folder ./ -like haplonet.loglike.npy -K 2 -t 64 -seed 0 -out haplonet.admixture.k2
+python admixNN.py -filelist chr.loglike.list -K 2 -threads 64 -seed 0 -out haplonet.admixture.k2
 ```
 
 And the admixture proportions can as an example be plotted in R as follows:
 ```R
-library(RcppCNPy)
-q <- npyLoad("haplonet.admixture.k2.q.npy")
+q <- read.table("haplonet.admixture.k2.q")
 barplot(t(q), space=0, border=NA, col=c("dodgerblue3", "firebrick2"), xlab="Individuals", ylab="Proportions", main="HaploNet - Admixture")
 ```
 
 ### Infer population structure using PCA
 Estimate eigenvectors directly using SVD (recommended for big datasets):
 ```bash
-python pcaNN.py -folder ./ -like haplonet.loglike.npy -t 64 -out haplonet
+python pcaNN.py -filelist chr.loglike.list -threads 64 -out haplonet
 ```
 ```R
 e <- as.matrix(read.table("haplonet.eigenvecs"))
@@ -65,7 +64,7 @@ plot(e[,1:2], main="PCA - HaploNet", xlab="PC1", ylab="PC2")
 
 Compute the covariance matrix followed by eigendecomposition in R:
 ```bash
-python pcaNN.py -folder ./ -like haplonet.loglike.npy -cov -t 64 -out haplonet
+python pcaNN.py -filelist chr.loglike.list -cov -threads 64 -out haplonet
 ```
 ```R
 C <- as.matrix(read.table("haplonet.cov"))

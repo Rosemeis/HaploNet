@@ -12,20 +12,18 @@ import shared_cy
 
 # Argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("-folder",
-	help="Path to chromosome folders")
+parser.add_argument("-filelist",
+	help="Filelist with paths to multiple log-likelihood files")
 parser.add_argument("-like",
-	help="Filename of log-likelihood files")
-parser.add_argument("-filter", type=float, default=0.001,
+	help="Path to single log-likelihood file")
+parser.add_argument("-filter", type=float, default=1e-3,
 	help="Threshold for haplotype cluster frequency")
-parser.add_argument("-n_chr", type=int, default=22,
-	help="Number of chromosomes/scaffolds")
 parser.add_argument("-e", type=int, default=10,
 	help="Number of eigenvectors to extract")
 parser.add_argument("-cov", action="store_true",
 	help="Estimate covariance matrix instead of SVD")
 parser.add_argument("-unphased", action="store_true",
-	help="Toggle for unphased genotype data")
+	help="(Not ready) Toggle for unphased genotype data")
 parser.add_argument("-threads", type=int, default=1,
 	help="Number of threads")
 parser.add_argument("-out",
@@ -37,20 +35,20 @@ args = parser.parse_args()
 print("HaploNet - PCA")
 
 # Load data (and concatentate across windows)
-if args.folder is not None:
-	L = np.load(args.folder + "/chr1/" + args.like)
-	for i in range(2, args.n_chr + 1):
-		L = np.concatenate((L, np.load(args.folder + "/chr" + str(i) + "/" + \
-							args.like)), axis=0)
+if args.filelist is not None:
+	L_list = []
+	with open(args.filelist) as f:
+		for chr in f:
+			L_list.append(np.load(chr.strip("\n")))
+	L = np.concatenate(L_list, axis=0)
+	del L_list
 else:
 	L = np.load(args.like)
-print("Loaded data.")
+print("Loaded data.", L.shape)
 W, N, C = L.shape
 
 # Convert log-like to like
-L -= np.max(L, axis=2, keepdims=True)
-L = np.exp(L)
-L /= np.sum(L, axis=2, keepdims=True)
+shared_cy.createLikes(L, args.threads)
 
 # Argmax and estimate haplotype frequencies
 L = np.eye(C, dtype=np.int8)[np.argmax(L, axis=2).astype(np.int8)]

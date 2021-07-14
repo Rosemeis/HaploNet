@@ -2,9 +2,36 @@ import numpy as np
 cimport numpy as np
 from cython.parallel import prange
 from cython import boundscheck, wraparound
-from libc.math cimport sqrt, log
+from libc.math cimport sqrt, log, exp
 
 ##### Cython functions for EM algorithm in HaploNet #####
+# Convert loglikes to normalized likes
+@boundscheck(False)
+@wraparound(False)
+cpdef createLikes(float[:,:,::1] L, int t):
+	cdef int W = L.shape[0]
+	cdef int N = L.shape[1]
+	cdef int C = L.shape[2]
+	cdef int w, i, c
+	cdef float tmpMax, tmpSum
+	with nogil:
+		for w in prange(W, num_threads=t):
+			for i in range(N):
+				tmpMax = L[w, i, 0]
+				tmpSum = 0.0
+				for c in range(1, C):
+					if L[w, i, c] > tmpMax:
+						tmpMax = L[w, i, c]
+				for c in range(C):
+					L[w, i, c] = L[w, i, c] - tmpMax
+					L[w, i, c] = exp(L[w, i, c])
+				for c in range(C):
+					tmpSum = tmpSum + L[w, i, c]
+				for c in range(C):
+					L[w, i, c] = L[w, i, c]/tmpSum
+
+
+# Main EM iteration
 @boundscheck(False)
 @wraparound(False)
 cpdef emLoop(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
@@ -186,6 +213,19 @@ cpdef accelUpdateF(float[:,:,::1] F, float[:,:,::1] F0, float[:,:,::1] diff1, \
 				for c in range(C):
 					F[w, k, c] /= sumY
 
+# Root mean squared error (2D)
+@boundscheck(False)
+@wraparound(False)
+cpdef float rmse2d(float[:,:] M1, float[:,:] M2):
+	cdef int N = M1.shape[0]
+	cdef int K = M1.shape[1]
+	cdef int i, k
+	cdef float res = 0.0
+	for i in range(N):
+		for k in range(K):
+			res = res + (M1[i, k] - M2[i, k])*(M1[i, k] - M2[i, k])
+	res = res/(<float>(N*K))
+	return sqrt(res)
 
 ##### Cython functions for PCA in HaploNet #####
 # Standardize cluster matrix
