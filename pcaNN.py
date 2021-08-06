@@ -24,6 +24,8 @@ parser.add_argument("-cov", action="store_true",
 	help="Estimate covariance matrix instead of SVD")
 parser.add_argument("-unphased", action="store_true",
 	help="(Not ready) Toggle for unphased genotype data")
+parser.add_argument("-loadings", action="store_true",
+	help="Save loadings of SVD")
 parser.add_argument("-threads", type=int, default=1,
 	help="Number of threads")
 parser.add_argument("-out",
@@ -102,3 +104,6 @@ else:
 	print("Saved eigenvectors as " + args.out + ".eigenvecs.")
 	np.savetxt(args.out + ".eigenvals", s[::-1]**2/float(Y.shape[1]), fmt="%.7f")
 	print("Saved eigenvalues as " + args.out + ".eigenvals.")
+	if args.loading:
+		np.savetxt(args.out + ".loadings", V[::-1,:].T, fmt="%.7f")
+		print("Saved loadings as " + args.out + ".loadings.")
