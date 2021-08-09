@@ -24,6 +24,8 @@ parser.add_argument("-cov", action="store_true",
 	help="Estimate covariance matrix instead of SVD")
 parser.add_argument("-unphased", action="store_true",
 	help="(Not ready) Toggle for unphased genotype data")
+parser.add_argument("-freqs", action="store_true",
+	help="Save haplotype cluster frequencies")
 parser.add_argument("-loadings", action="store_true",
 	help="Save loadings of SVD")
 parser.add_argument("-threads", type=int, default=1,
@@ -56,6 +58,8 @@ shared_cy.createLikes(L, args.threads)
 L = np.eye(C, dtype=np.int8)[np.argmax(L, axis=2).astype(np.int8)]
 F = np.sum(L, axis=1).astype(np.float32).flatten()
 F /= float(N)
+if args.freqs:
+	np.save(args.out + ".haplotype.freqs", F)
 
 # Construct data matrix
 L = np.swapaxes(L, 0, 1)
@@ -104,6 +108,6 @@ else:
 	print("Saved eigenvectors as " + args.out + ".eigenvecs.")
 	np.savetxt(args.out + ".eigenvals", s[::-1]**2/float(Y.shape[1]), fmt="%.7f")
 	print("Saved eigenvalues as " + args.out + ".eigenvals.")
-	if args.loading:
+	if args.loadings:
 		np.savetxt(args.out + ".loadings", V[::-1,:].T, fmt="%.7f")
 		print("Saved loadings as " + args.out + ".loadings.")
