@@ -9,6 +9,7 @@ __author__ = "Jonas Meisner"
 import numpy as np
 import allel
 import argparse
+from math import ceil
 
 # Argparse
 parser = argparse.ArgumentParser()
@@ -35,16 +36,16 @@ if args.window_length is not None:
     if (S.shape[0] % args.window_length) < args.window_length//2:
         nSeg = S.shape[0]//args.window_length
     else:
-        nSeg = np.ceil(S.shape[0]/args.window_length)
+        nSeg = ceil(S.shape[0]/args.window_length)
     M = np.zeros((nSeg, 3), dtype=int)
     for i in range(nSeg):
         if i == (nSeg-1):
             M[i,0] = S[i*args.window_length]
-            M[i,1] = np.ceil(np.median(S[(i*args.window_length):]))
+            M[i,1] = ceil(np.median(S[(i*args.window_length):]))
             M[i,2] = S.shape[0]
         else:
             M[i,0] = S[i*args.window_length]
-            M[i,1] = np.ceil(np.median(S[(i*args.window_length):((i+1)*args.window_length)]))
+            M[i,1] = ceil(np.median(S[(i*args.window_length):((i+1)*args.window_length)]))
             M[i,2] = S[(i+1)*args.window_length]
     print("Saving median window base postions as " + args.out + ".median.txt")
     np.savetxt(args.out + ".median.txt", M, delimiter="\t")
