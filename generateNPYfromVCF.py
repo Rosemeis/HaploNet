@@ -42,7 +42,7 @@ if args.window_length is not None:
         if i == (nSeg-1):
             M[i,0] = S[i*args.window_length]
             M[i,1] = ceil(np.median(S[(i*args.window_length):]))
-            M[i,2] = S.shape[0]
+            M[i,2] = S[-1]
         else:
             M[i,0] = S[i*args.window_length]
             M[i,1] = ceil(np.median(S[(i*args.window_length):((i+1)*args.window_length)]))
