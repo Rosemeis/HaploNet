@@ -48,7 +48,7 @@ if args.window_length is not None:
             M[i,1] = ceil(np.median(S[(i*args.window_length):((i+1)*args.window_length)]))
             M[i,2] = S[(i+1)*args.window_length]
     print("Saving median window base postions as " + args.out + ".median.txt")
-    np.savetxt(args.out + ".median.txt", M, delimiter="\t", fmt=".d")
+    np.savetxt(args.out + ".median.txt", M, delimiter="\t", fmt="%.d")
 
 # Save .npy file in np.int8
 if not args.only_lengths:
