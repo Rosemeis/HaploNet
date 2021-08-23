@@ -32,21 +32,24 @@ vcf = allel.read_vcf(args.vcf)
 # Optional save for median window positions (base positions)
 if args.window_length is not None:
     print("Generating median window base positions.")
+    C = vcf['variants/CHROM']
     S = vcf['variants/POS']
     if (S.shape[0] % args.window_length) < args.window_length//2:
         nSeg = S.shape[0]//args.window_length
     else:
         nSeg = ceil(S.shape[0]/args.window_length)
-    M = np.zeros((nSeg, 3), dtype=int)
+    M = np.zeros((nSeg, 4), dtype=int)
     for i in range(nSeg):
         if i == (nSeg-1):
-            M[i,0] = S[i*args.window_length]
-            M[i,1] = ceil(np.median(S[(i*args.window_length):]))
-            M[i,2] = S[-1]
+            M[i,0] = C[0]
+            M[i,1] = S[i*args.window_length]
+            M[i,2] = ceil(np.median(S[(i*args.window_length):]))
+            M[i,3] = S[-1]
         else:
-            M[i,0] = S[i*args.window_length]
-            M[i,1] = ceil(np.median(S[(i*args.window_length):((i+1)*args.window_length)]))
-            M[i,2] = S[(i+1)*args.window_length]
+            M[i,0] = C[0]
+            M[i,1] = S[i*args.window_length]
+            M[i,2] = ceil(np.median(S[(i*args.window_length):((i+1)*args.window_length)]))
+            M[i,3] = S[(i+1)*args.window_length]
     print("Saving median window base postions as " + args.out + ".median.txt")
     np.savetxt(args.out + ".median.txt", M, delimiter="\t", fmt="%.d")
 
