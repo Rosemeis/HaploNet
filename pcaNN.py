@@ -71,7 +71,7 @@ else:
 	N = N//2
 
 # Filter out low frequency haplotype clusters
-mask = F > args.filter
+mask = (F >= args.filter) & (F <= (1.0 - args.filter))
 F = F[mask]
 L = np.ascontiguousarray(L[:, mask])
 print("After filtering with threshold (" + str(args.filter) + "): ", L.shape)
@@ -92,7 +92,7 @@ if args.cov:
 	print("Saved covariance matrix as " + args.out + ".cov")
 else:
 	from scipy.sparse.linalg import svds
-	Y = np.empty(L.shape, dtype=np.float32)
+	Y = np.zeros(L.shape, dtype=np.float32)
 	if args.unphased:
 		shared_cy.standardizeY_unphased(L, F, Y, args.threads)
 	else:
