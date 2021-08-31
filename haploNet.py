@@ -14,67 +14,69 @@ from torch.utils.data import DataLoader
 import argparse
 import os
 from time import time
-from math import ceil, log, pi
+from math import ceil
 
 # Import own scripts
 import haploModel
 
 # Argparse
 parser = argparse.ArgumentParser(prog="HaploNet")
-parser.add_argument("geno",
+parser.add_argument("-g", "--geno",
 	help="Genotype file in binary NumPy format")
-parser.add_argument("-x_dim", type=int, default=1024,
+parser.add_argument("-x", "--x_dim", type=int, default=1024,
 	help="Dimension of input data - window size")
-parser.add_argument("-h_dim", type=int, default=256,
+parser.add_argument("-i", "--h_dim", type=int, default=256,
 	help="Dimension of hidden layers")
-parser.add_argument("-z_dim", type=int, default=64,
+parser.add_argument("-z", "--z_dim", type=int, default=64,
 	help="Dimension of latent representation")
-parser.add_argument("-y_dim", type=int, default=20,
+parser.add_argument("-y", "--y_dim", type=int, default=16,
 	help="Number of mixing components")
-parser.add_argument("-bs", type=int, default=128,
+parser.add_argument("-b", "--batch", type=int, default=128,
 	help="Batch size for NN")
-parser.add_argument("-epochs", type=int, default=200,
+parser.add_argument("-e", "--epochs", type=int, default=200,
 	help="Number of epochs")
-parser.add_argument("-lr", type=float, default=1e-3,
+parser.add_argument("-r", "--rate", type=float, default=1e-3,
 	help="Learning rate for Adam")
-parser.add_argument("-beta", type=float, default=0.1,
+parser.add_argument("-w", "--beta", type=float, default=1.0,
 	help="Weight on categorical loss")
-parser.add_argument("-temp", type=float, default=0.1,
+parser.add_argument("--temp", type=float, default=0.1,
 	help="Temperature in Gumbel-Softmax")
-parser.add_argument("-cuda", action="store_true",
+parser.add_argument("-c", "--cuda", action="store_true",
 	help="Toggle GPU training")
-parser.add_argument("-seed", type=int,
-	help="Set NumPy seed")
-parser.add_argument("-debug", action="store_true",
-	help="Print losses")
-parser.add_argument("-save_models", action="store_true",
-	help="Save models")
-parser.add_argument("-split", type=float, default=1.0,
-	help="Ratio of training/validation")
-parser.add_argument("-patience", type=int, default=9,
-	help="Patience for validation loss")
-parser.add_argument("-overlap", action="store_true",
-	help="Overlap genomic windows")
-parser.add_argument("-latent", action="store_true",
-	help="Save latent spaces")
-parser.add_argument("-prior", action="store_true",
+parser.add_argument("-s", "--seed", type=int,
+	help="Set random seed")
+parser.add_argument("-l", "--latent", action="store_true",
+	help="Save latent space parameters")
+parser.add_argument("-p", "--priors", action="store_true",
 	help="Save means of priors (E[p(z | y)])")
-parser.add_argument("-threads", type=int,
+parser.add_argument("-t", "--threads", type=int,
 	help="Number of threads")
-parser.add_argument("-out",
+parser.add_argument("-o", "--out",
 	help="Output path")
+parser.add_argument("--split", type=float, default=1.0,
+	help="Ratio of training/validation")
+parser.add_argument("--patience", type=int, default=9,
+	help="Patience for validation loss")
+parser.add_argument("--overlap", action="store_true",
+	help="Overlap genomic windows")
+parser.add_argument("--save_models", action="store_true",
+	help="Save models")
+parser.add_argument("--debug", action="store_true",
+	help="Print losses")
 args = parser.parse_args()
 
 ##### HaploNet #####
 print('HaploNet - Gaussian Mixture Variational Autoencoder')
 
 # Global variables
-LOG2PI = 2*log(pi)
+LOG2PI = 2*np.log(np.pi)
+LOGK = np.log(args.y_dim)
 if args.threads is not None:
 	torch.set_num_threads(args.threads)
 	torch.set_num_interop_threads(args.threads)
 if args.seed is not None:
 	np.random.seed(args.seed)
+	torch.manual_seed(args.seed)
 
 # Check parsing
 if args.cuda:
@@ -104,7 +106,7 @@ def log_normal(z, mu, logvar):
 def elbo(recon_x, x, z, z_m, z_v, p_m, p_v, y, beta):
 	rec_loss = torch.sum(F.binary_cross_entropy_with_logits(recon_x, x, reduction='none'), dim=1)
 	gau_loss = log_normal(z, z_m, z_v) - log_normal(z, p_m, p_v)
-	cat_loss = torch.sum(y*torch.log(torch.clamp(y, min=1e-8)), dim=1)
+	cat_loss = torch.sum(y*torch.log(torch.clamp(y, min=1e-8)), dim=1) + LOGK
 	return torch.mean(rec_loss + gau_loss + beta*cat_loss)
 
 

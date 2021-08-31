@@ -1,3 +1,4 @@
+# cython: language_level=3, boundscheck=False, wraparound=False, initializedcheck=False, cdivision=True
 import numpy as np
 cimport numpy as np
 from cython.parallel import prange
@@ -6,8 +7,6 @@ from libc.math cimport sqrt, log, exp
 
 ##### Cython functions for EM algorithm in HaploNet #####
 # Convert loglikes to normalized likes
-@boundscheck(False)
-@wraparound(False)
 cpdef createLikes(float[:,:,::1] L, int t):
 	cdef int W = L.shape[0]
 	cdef int N = L.shape[1]
@@ -32,8 +31,6 @@ cpdef createLikes(float[:,:,::1] L, int t):
 
 
 # Main EM iteration
-@boundscheck(False)
-@wraparound(False)
 cpdef emLoop(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
 				float[:,:,::1] Fnew, float[:,:,::1] Qnew, int t):
 	cdef int W = L.shape[0]
@@ -78,8 +75,6 @@ cpdef emLoop(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
 
 
 # Q update
-@boundscheck(False)
-@wraparound(False)
 cpdef updateQ(float[:,:,::1] Qnew, float[:,::1] Q, int t):
 	cdef int W = Qnew.shape[0]
 	cdef int N = Qnew.shape[1]
@@ -96,8 +91,6 @@ cpdef updateQ(float[:,:,::1] Qnew, float[:,::1] Q, int t):
 
 
 # Log-likelihood
-@boundscheck(False)
-@wraparound(False)
 cpdef logLike(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
 				float[::1] logVec, int t):
 	cdef int W = L.shape[0]
@@ -120,8 +113,6 @@ cpdef logLike(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
 
 ### Acceleration functions
 # Minus Q
-@boundscheck(False)
-@wraparound(False)
 cpdef matMinusQ(float[:,::1] Q1, float[:,::1] Q2, float[:,::1] diffQ):
 	cdef int N = Q1.shape[0]
 	cdef int K = Q1.shape[1]
@@ -131,8 +122,6 @@ cpdef matMinusQ(float[:,::1] Q1, float[:,::1] Q2, float[:,::1] diffQ):
 			diffQ[i, k] = Q1[i, k] - Q2[i, k]
 
 # SumSquare Q
-@boundscheck(False)
-@wraparound(False)
 cpdef matSumSquareQ(float[:,::1] diffQ):
 	cdef int N = diffQ.shape[0]
 	cdef int K = diffQ.shape[1]
@@ -144,8 +133,6 @@ cpdef matSumSquareQ(float[:,::1] diffQ):
 	return sumQ
 
 # Update F alpha
-@boundscheck(False)
-@wraparound(False)
 cpdef accelUpdateQ(float[:,::1] Q, float[:,::1] Q0, float[:,::1] diff1, \
 					float[:,::1] diff3, float alpha, int t):
 	cdef int N = Q.shape[0]
@@ -164,8 +151,6 @@ cpdef accelUpdateQ(float[:,::1] Q, float[:,::1] Q0, float[:,::1] diff1, \
 				Q[i, k] /= sumK
 
 # Minus F
-@boundscheck(False)
-@wraparound(False)
 cpdef matMinusF(float[:,:,::1] F1, float[:,:,::1] F2, float[:,:,::1] diffF):
 	cdef int W = F1.shape[0]
 	cdef int K = F1.shape[1]
@@ -177,8 +162,6 @@ cpdef matMinusF(float[:,:,::1] F1, float[:,:,::1] F2, float[:,:,::1] diffF):
 				diffF[w, k, c] = F1[w, k, c] - F2[w, k, c]
 
 # SumSquare F
-@boundscheck(False)
-@wraparound(False)
 cpdef matSumSquareF(float[:,:,::1] diffF):
 	cdef int W = diffF.shape[0]
 	cdef int K = diffF.shape[1]
@@ -192,8 +175,6 @@ cpdef matSumSquareF(float[:,:,::1] diffF):
 	return sumF
 
 # Update F alpha
-@boundscheck(False)
-@wraparound(False)
 cpdef accelUpdateF(float[:,:,::1] F, float[:,:,::1] F0, float[:,:,::1] diff1, \
 					float[:,:,::1] diff3, float alpha, int t):
 	cdef int W = F.shape[0]
@@ -214,8 +195,6 @@ cpdef accelUpdateF(float[:,:,::1] F, float[:,:,::1] F0, float[:,:,::1] diff1, \
 					F[w, k, c] /= sumY
 
 # Root mean squared error (2D)
-@boundscheck(False)
-@wraparound(False)
 cpdef float rmse2d(float[:,:] M1, float[:,:] M2):
 	cdef int N = M1.shape[0]
 	cdef int K = M1.shape[1]
@@ -229,8 +208,6 @@ cpdef float rmse2d(float[:,:] M1, float[:,:] M2):
 
 ##### Cython functions for PCA in HaploNet #####
 # Standardize cluster matrix
-@boundscheck(False)
-@wraparound(False)
 cpdef standardizeY(signed char[:,::1] L, float[::1] F, float[:,::1] Y, int t):
 	cdef int N = L.shape[0]
 	cdef int S = L.shape[1]
@@ -241,8 +218,6 @@ cpdef standardizeY(signed char[:,::1] L, float[::1] F, float[:,::1] Y, int t):
 				Y[i, s] = (L[i, s] - 2*F[s])/sqrt(2*F[s]*(1 - F[s]))
 
 # Standardize unphased cluster matrix
-@boundscheck(False)
-@wraparound(False)
 cpdef standardizeY_unphased(signed char[:,::1] L, float[::1] F, \
 							float[:,::1] Y, int t):
 	cdef int N = L.shape[0]
@@ -254,8 +229,6 @@ cpdef standardizeY_unphased(signed char[:,::1] L, float[::1] F, \
 				Y[i, s] = (L[i, s] - F[s])/sqrt(F[s]*(1 - F[s]))
 
 # Covariance estimation
-@boundscheck(False)
-@wraparound(False)
 cpdef covarianceY(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
 	cdef int N = L.shape[0]
 	cdef int S = L.shape[1]
@@ -270,8 +243,6 @@ cpdef covarianceY(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
 				C[j, i] = C[i, j]
 
 # Covariance estimation - unphased
-@boundscheck(False)
-@wraparound(False)
 cpdef covarianceY_unphased(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
 	cdef int N = L.shape[0]
 	cdef int S = L.shape[1]
