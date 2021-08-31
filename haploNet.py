@@ -51,7 +51,7 @@ parser.add_argument("-p", "--priors", action="store_true",
 	help="Save means of priors (E[p(z | y)])")
 parser.add_argument("-t", "--threads", type=int,
 	help="Number of threads")
-parser.add_argument("-o", "--out",
+parser.add_argument("-o", "--out", default="haplonet",
 	help="Output path")
 parser.add_argument("--split", type=float, default=1.0,
 	help="Ratio of training/validation")
@@ -67,6 +67,7 @@ args = parser.parse_args()
 
 ##### HaploNet #####
 print('HaploNet - Gaussian Mixture Variational Autoencoder')
+assert args.geno is not None, "No input data (.npy)"
 
 # Global variables
 LOG2PI = 2*np.log(np.pi)

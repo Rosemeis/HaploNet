@@ -12,31 +12,34 @@ import shared_cy
 
 # Argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("-filelist",
+parser.add_argument("-f", "--filelist",
 	help="Filelist with paths to multiple log-likelihood files")
-parser.add_argument("-like",
+parser.add_argument("-l", "--like",
 	help="Path to single log-likelihood file")
-parser.add_argument("-filter", type=float, default=1e-3,
+parser.add_argument("-F", "--filter", type=float, default=1e-3,
 	help="Threshold for haplotype cluster frequency")
-parser.add_argument("-e", type=int, default=10,
+parser.add_argument("-e", "--n_eig", type=int, default=10,
 	help="Number of eigenvectors to extract")
-parser.add_argument("-cov", action="store_true",
+parser.add_argument("-c", "--cov", action="store_true",
 	help="Estimate covariance matrix instead of SVD")
-parser.add_argument("-unphased", action="store_true",
-	help="(Not ready) Toggle for unphased genotype data")
-parser.add_argument("-freqs", action="store_true",
-	help="Save haplotype cluster frequencies")
-parser.add_argument("-loadings", action="store_true",
-	help="Save loadings of SVD")
-parser.add_argument("-threads", type=int, default=1,
+parser.add_argument("-t", "--threads", type=int, default=1,
 	help="Number of threads")
-parser.add_argument("-out",
+parser.add_argument("-o", "--out", default="haplonet.pca",
 	help="Output path/name")
+parser.add_argument("--unphased", action="store_true",
+	help="(Not ready) Toggle for unphased genotype data")
+parser.add_argument("--freqs", action="store_true",
+	help="Save haplotype cluster frequencies")
+parser.add_argument("--loadings", action="store_true",
+	help="Save loadings of SVD")
 args = parser.parse_args()
-
 
 ##### HaploNet - PCA #####
 print("HaploNet - PCA")
+
+# Check input
+assert (args.filelist is not None) or (args.like is not None), \
+		"No input data (-f or -l)"
 
 # Load data (and concatentate across windows)
 if args.filelist is not None:
@@ -99,9 +102,9 @@ else:
 		shared_cy.standardizeY(L, F, Y, args.threads)
 
 	# Perform SVD
-	print("Performing truncated SVD, extracting " + str(args.e) + \
+	print("Performing truncated SVD, extracting " + str(args.n_eig) + \
 			" eigenvectors.")
-	U, s, V = svds(Y, k=args.e)
+	U, s, V = svds(Y, k=args.n_eig)
 
 	# Save matrices
 	np.savetxt(args.out + ".eigenvecs", U[:, ::-1], fmt="%.7f")

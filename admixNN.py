@@ -12,30 +12,30 @@ import shared_cy
 
 # Argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("-filelist",
+parser.add_argument("-f", "--filelist",
 	help="Filelist with paths to multiple log-likelihood files")
-parser.add_argument("-like",
+parser.add_argument("-l", "--like",
 	help="Path to single log-likelihood file")
-parser.add_argument("-K", type=int,
+parser.add_argument("-K", "--K", type=int,
 	help="Number of ancestral components")
-parser.add_argument("-iter", type=int, default=5000,
+parser.add_argument("-i", "--iter", type=int, default=5000,
 	help="Maximum number of iterations")
-parser.add_argument("-tole", type=float, default=0.1,
-	help="Difference in loglike between args.check iterations")
-parser.add_argument("-tole_q", type=float, default=1e-6,
-	help="Tolerance for convergence of Q matrix")
-parser.add_argument("-no_accel", action="store_true",
-	help="Turn off SqS3 acceleration")
-parser.add_argument("-threads", type=int, default=1,
+parser.add_argument("-t", "--threads", type=int, default=1,
 	help="Number of threads")
-parser.add_argument("-check", type=int, default=50,
+parser.add_argument("-c", "--check", type=int, default=50,
 	help="Calculating loglike for every i-th iteration")
-parser.add_argument("-check_q", action="store_true",
+parser.add_argument("--check_q", action="store_true",
 	help="Check convergence for change in Q matrix")
-parser.add_argument("-seed", type=int, default=0,
+parser.add_argument("-s", "--seed", type=int, default=0,
 	help="Random seed")
-parser.add_argument("-out",
+parser.add_argument("-o", "--out", default="haplonet.admix",
 	help="Output path/name")
+parser.add_argument("--tole", type=float, default=0.1,
+	help="Difference in loglike between args.check iterations")
+parser.add_argument("--tole_q", type=float, default=1e-6,
+	help="Tolerance for convergence of Q matrix")
+parser.add_argument("--no_accel", action="store_true",
+	help="Turn off SqS3 acceleration")
 args = parser.parse_args()
 
 # Function for EM step
@@ -56,6 +56,11 @@ def emStepAccel(L, F, Q, Fnew, Qnew, diffF, diffQ, t):
 ##### HaploNet - EM #####
 print("HaploNet - EM algorithm - K=" + str(args.K))
 print("Estimating ancestry proportions and window-based haplotype frequencies.")
+
+# Check input
+assert (args.filelist is not None) or (args.like is not None), \
+		"No input data (-f or -l)"
+assert args.K is not None, "Must provide number of ancestral components (-K)"
 
 # Load data (and concatentate across windows)
 if args.filelist is not None:
