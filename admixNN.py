@@ -80,30 +80,35 @@ shared_cy.createLikes(L, args.threads)
 
 # Initiate containers
 np.random.seed(args.seed) # Set random seed
-Q = np.random.rand(N//2, args.K).astype(np.float32)
+Q = np.random.rand(N//2, args.K).astype(np.float64)
 Q /= np.sum(Q, axis=1, keepdims=True)
-F = np.random.rand(W, args.K, C).astype(np.float32)
+F = np.random.rand(W, args.K, C).astype(np.float64)
 F /= np.sum(F, axis=2, keepdims=True)
-Qnew = np.zeros((W, N//2, args.K), dtype=np.float32)
-Fnew = np.zeros((W, args.K, C), dtype=np.float32)
-logVec = np.zeros(W, dtype=np.float32)
+Qnew = np.zeros((W, N//2, args.K), dtype=np.float64)
+Fnew = np.zeros((W, args.K, C), dtype=np.float64)
+logVec = np.zeros(W, dtype=np.float64)
+
+# Initialization log-likelihood
+shared_cy.logLike(L, F, Q, logVec, args.threads)
+curLL = np.sum(logVec, dtype=float)
+print("Iteration 0: " + str(curLL))
 
 # Acceleration containers
 if not args.no_accel:
 	print("Using accelerated EM scheme (SqS3)")
-	diffF_1 = np.zeros((W, args.K, C), dtype=np.float32)
-	diffF_2 = np.zeros((W, args.K, C), dtype=np.float32)
-	diffF_3 = np.zeros((W, args.K, C), dtype=np.float32)
-	diffQ_1 = np.zeros((N//2, args.K), dtype=np.float32)
-	diffQ_2 = np.zeros((N//2, args.K), dtype=np.float32)
-	diffQ_3 = np.zeros((N//2, args.K), dtype=np.float32)
+	diffF_1 = np.zeros((W, args.K, C), dtype=np.float64)
+	diffF_2 = np.zeros((W, args.K, C), dtype=np.float64)
+	diffF_3 = np.zeros((W, args.K, C), dtype=np.float64)
+	diffQ_1 = np.zeros((N//2, args.K), dtype=np.float64)
+	diffQ_2 = np.zeros((N//2, args.K), dtype=np.float64)
+	diffQ_3 = np.zeros((N//2, args.K), dtype=np.float64)
+	stepMax_F = 4.0
+	stepMax_Q = 4.0
 
 # Run EM
-for i in range(args.iter):
+for i in range(1, args.iter + 1):
 	# SqS3 - EM acceleration
 	if not args.no_accel:
-		if i == 0:
-			emStep(L, F, Q, Fnew, Qnew, args.threads)
 		F0 = np.copy(F)
 		Q0 = np.copy(Q)
 
@@ -120,32 +125,26 @@ for i in range(args.iter):
 		sv2_Q = shared_cy.matSumSquareQ(diffQ_3)
 		alpha_F = max(1.0, np.sqrt(sr2_F/sv2_F))
 		alpha_Q = max(1.0, np.sqrt(sr2_Q/sv2_Q))
+		if alpha_F > stepMax_F:
+			alpha_F = min(alpha_F, stepMax_F)
+			stepMax_F *= 4.0
+		if alpha_Q > stepMax_Q:
+			alpha_Q = min(alpha_Q, stepMax_Q)
+			stepMax_Q *= 4.0
 
 		# Update matrices and map to domain
 		shared_cy.accelUpdateF(F, F0, diffF_1, diffF_3, alpha_F, args.threads)
 		shared_cy.accelUpdateQ(Q, Q0, diffQ_1, diffQ_3, alpha_Q, args.threads)
 	else:
 		emStep(L, F, Q, Fnew, Qnew, args.threads)
-	if i == 0:
-		shared_cy.logLike(L, F, Q, logVec, args.threads)
-		curLL = np.sum(logVec, dtype=float)
-		print("Iteration " + str(i+1) + ": " + str(curLL))
-		if args.check_q:
-			Qold = np.copy(Q)
-	if (i > 0) and ((i+1) % args.check == 0):
+	if i % args.check == 0:
 		shared_cy.logLike(L, F, Q, logVec, args.threads)
 		newLL = np.sum(logVec, dtype=float)
-		print("Iteration " + str(i+1) + ": " + str(newLL))
+		print("Iteration " + str(i) + ": " + str(newLL))
 		if abs(newLL - curLL) < args.tole:
 			print("EM algorithm converged.")
 			break
 		curLL = newLL
-		if args.check_q:
-			diff = shared_cy.rmse2d(Q, Qold)
-			if diff < args.tole_q:
-				print("EM algorithm converged (due to change in Q): ", diff)
-				break
-			Qold = np.copy(Q)
 
 # Save Q and F
 np.savetxt(args.out + ".q", Q, fmt="%.7f")

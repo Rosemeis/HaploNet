@@ -13,16 +13,16 @@ from math import ceil
 
 # Argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("-vcf",
+parser.add_argument("-v", "--vcf",
     help="Input vcf-file of genotypes")
-parser.add_argument("-unphased", action="store_true",
-    help="(Not ready) Toggle for unphased genotype data")
-parser.add_argument("-window_length", metavar="INT", type=int,
+parser.add_argument("-l", "--length", metavar="INT", type=int,
     help="Generate median base positions for defined window lengths")
-parser.add_argument("-only_lengths", action="store_true",
-    help="Only save median base positions")
-parser.add_argument("-out",
+parser.add_argument("-w", "--windows", action="store_true",
+    help="Only save median base positions, no .npy output")
+parser.add_argument("-o", "--out",
     help="Output filepath")
+parser.add_argument("--unphased", action="store_true",
+    help="(Not ready) Toggle for unphased genotype data")
 args = parser.parse_args()
 
 # Load VCF
@@ -30,31 +30,31 @@ print("Loading VCF file and generating NumPy file.")
 vcf = allel.read_vcf(args.vcf)
 
 # Optional save for median window positions (base positions)
-if args.window_length is not None:
+if args.length is not None:
     print("Generating median window base positions.")
     C = vcf['variants/CHROM']
     S = vcf['variants/POS']
-    if (S.shape[0] % args.window_length) < args.window_length//2:
-        nSeg = S.shape[0]//args.window_length
+    if (S.shape[0] % args.length) < args.length//2:
+        nSeg = S.shape[0]//args.length
     else:
-        nSeg = ceil(S.shape[0]/args.window_length)
+        nSeg = ceil(S.shape[0]/args.length)
     M = np.zeros((nSeg, 4), dtype=int)
     for i in range(nSeg):
         if i == (nSeg-1):
             M[i,0] = C[0]
-            M[i,1] = S[i*args.window_length]
-            M[i,2] = ceil(np.median(S[(i*args.window_length):]))
+            M[i,1] = S[i*args.length]
+            M[i,2] = ceil(np.median(S[(i*args.length):]))
             M[i,3] = S[-1]
         else:
             M[i,0] = C[0]
-            M[i,1] = S[i*args.window_length]
-            M[i,2] = ceil(np.median(S[(i*args.window_length):((i+1)*args.window_length)]))
-            M[i,3] = S[(i+1)*args.window_length]
+            M[i,1] = S[i*args.length]
+            M[i,2] = ceil(np.median(S[(i*args.length):((i+1)*args.length)]))
+            M[i,3] = S[(i+1)*args.length]
     print("Saving median window base postions as " + args.out + ".median.txt")
     np.savetxt(args.out + ".median.txt", M, delimiter="\t", fmt="%.d")
 
 # Save .npy file in np.int8
-if not args.only_lengths:
+if not args.windows:
     G = vcf['calldata/GT']
     if args.unphased:
         print("Saving unphased genotypes as " + args.out + ".npy")

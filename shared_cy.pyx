@@ -24,21 +24,17 @@ cpdef createLikes(float[:,:,::1] L, int t):
 				for c in range(C):
 					L[w, i, c] = L[w, i, c] - tmpMax
 					L[w, i, c] = exp(L[w, i, c])
-				for c in range(C):
-					tmpSum = tmpSum + L[w, i, c]
-				for c in range(C):
-					L[w, i, c] = L[w, i, c]/tmpSum
 
 
 # Main EM iteration
-cpdef emLoop(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
-				float[:,:,::1] Fnew, float[:,:,::1] Qnew, int t):
+cpdef emLoop(float[:,:,::1] L, double[:,:,::1] F, double[:,::1] Q, \
+				double[:,:,::1] Fnew, double[:,:,::1] Qnew, int t):
 	cdef int W = L.shape[0]
 	cdef int N = L.shape[1]
 	cdef int C = L.shape[2]
 	cdef int K = Q.shape[1]
 	cdef int w, d, i, a, c, k
-	cdef float pSum, postKY, sumY
+	cdef double pSum, postKY, sumY
 	with nogil:
 		for w in prange(W, num_threads=t):
 			# Reset Fnew
@@ -75,30 +71,36 @@ cpdef emLoop(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
 
 
 # Q update
-cpdef updateQ(float[:,:,::1] Qnew, float[:,::1] Q, int t):
+cpdef updateQ(double[:,:,::1] Qnew, double[:,::1] Q, int t):
 	cdef int W = Qnew.shape[0]
 	cdef int N = Qnew.shape[1]
 	cdef int K = Qnew.shape[2]
 	cdef int w, i, k
+	cdef double sumQ
 	with nogil:
 		for i in prange(N, num_threads=t):
+			sumQ = 0.0
 			for k in range(K):
 				Q[i, k] = 0.0
 				for w in range(W):
 					Q[i, k] += Qnew[w, i, k]
 			for k in range(K):
 				Q[i, k] /= 2.0*float(W)
+				Q[i, k] = min(max(Q[i, k], 1e-7), 1-(1e-7))
+				sumQ = sumQ + Q[i, k]
+			for k in range(K):
+				Q[i, k] = Q[i, k]/sumQ
 
 
 # Log-likelihood
-cpdef logLike(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
-				float[::1] logVec, int t):
+cpdef logLike(float[:,:,::1] L, double[:,:,::1] F, double[:,::1] Q, \
+				double[::1] logVec, int t):
 	cdef int W = L.shape[0]
 	cdef int N = L.shape[1]
 	cdef int C = L.shape[2]
 	cdef int K = Q.shape[1]
 	cdef int w, i, a, c, k
-	cdef float pLike
+	cdef double pLike
 	with nogil:
 		for w in prange(W, num_threads=t):
 			logVec[w] = 0.0
@@ -113,7 +115,7 @@ cpdef logLike(float[:,:,::1] L, float[:,:,::1] F, float[:,::1] Q, \
 
 ### Acceleration functions
 # Minus Q
-cpdef matMinusQ(float[:,::1] Q1, float[:,::1] Q2, float[:,::1] diffQ):
+cpdef matMinusQ(double[:,::1] Q1, double[:,::1] Q2, double[:,::1] diffQ):
 	cdef int N = Q1.shape[0]
 	cdef int K = Q1.shape[1]
 	cdef int i, k
@@ -122,23 +124,23 @@ cpdef matMinusQ(float[:,::1] Q1, float[:,::1] Q2, float[:,::1] diffQ):
 			diffQ[i, k] = Q1[i, k] - Q2[i, k]
 
 # SumSquare Q
-cpdef matSumSquareQ(float[:,::1] diffQ):
+cpdef matSumSquareQ(double[:,::1] diffQ):
 	cdef int N = diffQ.shape[0]
 	cdef int K = diffQ.shape[1]
 	cdef int i, k
-	cdef float sumQ = 0.0
+	cdef double sumQ = 0.0
 	for i in range(N):
 		for k in range(K):
 			sumQ += diffQ[i, k]*diffQ[i, k]
 	return sumQ
 
 # Update F alpha
-cpdef accelUpdateQ(float[:,::1] Q, float[:,::1] Q0, float[:,::1] diff1, \
-					float[:,::1] diff3, float alpha, int t):
+cpdef accelUpdateQ(double[:,::1] Q, double[:,::1] Q0, double[:,::1] diff1, \
+					double[:,::1] diff3, double alpha, int t):
 	cdef int N = Q.shape[0]
 	cdef int K = Q.shape[1]
 	cdef int i, k
-	cdef float sumK
+	cdef double sumK
 	with nogil:
 		for i in prange(N, num_threads=t):
 			sumK = 0.0
@@ -151,7 +153,7 @@ cpdef accelUpdateQ(float[:,::1] Q, float[:,::1] Q0, float[:,::1] diff1, \
 				Q[i, k] /= sumK
 
 # Minus F
-cpdef matMinusF(float[:,:,::1] F1, float[:,:,::1] F2, float[:,:,::1] diffF):
+cpdef matMinusF(double[:,:,::1] F1, double[:,:,::1] F2, double[:,:,::1] diffF):
 	cdef int W = F1.shape[0]
 	cdef int K = F1.shape[1]
 	cdef int C = F1.shape[2]
@@ -162,12 +164,12 @@ cpdef matMinusF(float[:,:,::1] F1, float[:,:,::1] F2, float[:,:,::1] diffF):
 				diffF[w, k, c] = F1[w, k, c] - F2[w, k, c]
 
 # SumSquare F
-cpdef matSumSquareF(float[:,:,::1] diffF):
+cpdef matSumSquareF(double[:,:,::1] diffF):
 	cdef int W = diffF.shape[0]
 	cdef int K = diffF.shape[1]
 	cdef int C = diffF.shape[2]
 	cdef int w, k, c
-	cdef float sumF = 0.0
+	cdef double sumF = 0.0
 	for w in range(W):
 		for k in range(K):
 			for c in range(C):
@@ -175,13 +177,13 @@ cpdef matSumSquareF(float[:,:,::1] diffF):
 	return sumF
 
 # Update F alpha
-cpdef accelUpdateF(float[:,:,::1] F, float[:,:,::1] F0, float[:,:,::1] diff1, \
-					float[:,:,::1] diff3, float alpha, int t):
+cpdef accelUpdateF(double[:,:,::1] F, double[:,:,::1] F0, double[:,:,::1] diff1, \
+					double[:,:,::1] diff3, double alpha, int t):
 	cdef int W = F.shape[0]
 	cdef int K = F.shape[1]
 	cdef int C = F.shape[2]
 	cdef int w, k, c
-	cdef float sumY
+	cdef double sumY
 	with nogil:
 		for w in prange(W, num_threads=t):
 			for k in range(K):
