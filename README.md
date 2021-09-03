@@ -31,14 +31,14 @@ python generateNPYfromVCF.py --vcf chr1.vcf.gz --out chr1
 
 HaploNet can now be trained directly on the generated haplotype matrix as follows (using default parameters and on GPU):
 ```bash
-python haploNet.py -geno chr1.npy --cuda --out haplonet
+python haploNet.py --geno chr1.npy --cuda --out haplonet
 ```
-HaploNet outputs the neural network log-likelihoods by default which are used to infer global population structure (PCA and admixture). With the '-latent' argument, the parameters of the learnt latent spaces of the GMVAE can be saved as well. See all available options in HaploNet with the following command:
+HaploNet outputs the neural network log-likelihoods by default which are used to infer global population structure (PCA and admixture). With the '--latent' argument, the parameters of the learnt latent spaces of the GMVAE can be saved as well. See all available options in HaploNet with the following command:
 ```bash
 python haploNet.py -h
 ```
 
-All the following analyses assume that HaploNet has been run for all chromosomes such that the filepaths of the log-likelihoods for each chromosomes are in one file. The argument "-like" can be used if you only have one file.
+All the following analyses assume that HaploNet has been run for all chromosomes such that the filepaths of the log-likelihoods for each chromosomes are in one file. The argument "--like" can be used if you only have one file.
 
 ### Estimate ancestry proportions and haplotype cluster frequencies
 The EM algorithm in HaploNet can be run with *K=2* and 64 threads (CPU based).
