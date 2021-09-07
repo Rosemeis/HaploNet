@@ -184,22 +184,22 @@ for i in range(nSeg):
 		permVec = np.random.permutation(n)
 		nTrain = permVec[:int(n*args.split)]
 		nValid = permVec[int(n*args.split):]
-		trainLoad = DataLoader(segG[nTrain], batch_size=args.bs, shuffle=True, \
+		trainLoad = DataLoader(segG[nTrain], batch_size=args.batch, shuffle=True, \
 								pin_memory=True)
-		validLoad = DataLoader(segG[nValid], batch_size=args.bs, \
+		validLoad = DataLoader(segG[nValid], batch_size=args.batch, \
 								pin_memory=True)
 		patLoss = float('Inf')
 		pat = 0
 	else:
 		# Training set
-		trainLoad = DataLoader(segG, batch_size=args.bs, shuffle=True, \
+		trainLoad = DataLoader(segG, batch_size=args.batch, shuffle=True, \
 								pin_memory=True)
 
 	# Define model
 	model = haploModel.HaploNet(segG.size(1), args.h_dim, args.z_dim, \
 								args.y_dim, args.temp)
 	model.to(dev)
-	optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+	optimizer = torch.optim.Adam(model.parameters(), lr=args.rate)
 
 	# Run training (and validation)
 	for epoch in range(args.epochs):
@@ -226,29 +226,29 @@ for i in range(nSeg):
 
 	# Save latent and model
 	model.eval()
-	batch_n = ceil(n/args.bs)
-	saveLoad = DataLoader(segG, batch_size=args.bs, pin_memory=True)
+	batch_n = ceil(n/args.batch)
+	saveLoad = DataLoader(segG, batch_size=args.batch, pin_memory=True)
 	with torch.no_grad():
 		for it, data in enumerate(saveLoad):
 			# Generate likelihoods
 			batch_x = data.to(dev, non_blocking=True)
 			batch_l = model.generateLikelihoods(batch_x, Y_eye)
 			if it == (batch_n - 1):
-				L[i,it*args.bs:,:] = batch_l.to(torch.device('cpu')).detach()
+				L[i,it*args.batch:,:] = batch_l.to(torch.device('cpu')).detach()
 			else:
-				L[i,it*args.bs:(it+1)*args.bs,:] = batch_l.to(torch.device('cpu')).detach()
+				L[i,it*args.batch:(it+1)*args.batch,:] = batch_l.to(torch.device('cpu')).detach()
 
 			# Generate latent spaces
 			if args.latent:
 				batch_z, batch_v, batch_y = model.generateLatent(batch_x)
 				if it == (batch_n - 1):
-					Z[i,it*args.bs:,:] = batch_z.to(torch.device('cpu')).detach()
-					V[i,it*args.bs:,:] = batch_v.to(torch.device('cpu')).detach()
-					Y[i,it*args.bs:,:] = batch_y.to(torch.device('cpu')).detach()
+					Z[i,it*args.batch:,:] = batch_z.to(torch.device('cpu')).detach()
+					V[i,it*args.batch:,:] = batch_v.to(torch.device('cpu')).detach()
+					Y[i,it*args.batch:,:] = batch_y.to(torch.device('cpu')).detach()
 				else:
-					Z[i,it*args.bs:(it+1)*args.bs,:] = batch_z.to(torch.device('cpu')).detach()
-					V[i,it*args.bs:(it+1)*args.bs,:] = batch_v.to(torch.device('cpu')).detach()
-					Y[i,it*args.bs:(it+1)*args.bs,:] = batch_y.to(torch.device('cpu')).detach()
+					Z[i,it*args.batch:(it+1)*args.batch,:] = batch_z.to(torch.device('cpu')).detach()
+					V[i,it*args.batch:(it+1)*args.batch,:] = batch_v.to(torch.device('cpu')).detach()
+					Y[i,it*args.batch:(it+1)*args.batch,:] = batch_y.to(torch.device('cpu')).detach()
 		if args.priors:
 			p = model.prior_m(Y_eye)
 			P[i,:,:] = p.to(torch.device('cpu')).detach()
