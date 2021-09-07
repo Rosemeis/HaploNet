@@ -30,7 +30,7 @@ parser.add_argument("-i", "--h_dim", type=int, default=256,
 parser.add_argument("-z", "--z_dim", type=int, default=64,
 	help="Dimension of latent representation")
 parser.add_argument("-y", "--y_dim", type=int, default=16,
-	help="Number of mixing components")
+	help="Number of haplotype clusters")
 parser.add_argument("-b", "--batch", type=int, default=128,
 	help="Batch size for NN")
 parser.add_argument("-e", "--epochs", type=int, default=200,
@@ -155,7 +155,7 @@ if args.latent:
 	Z = torch.empty((nSeg, n, args.z_dim)) # Means
 	V = torch.empty((nSeg, n, args.z_dim)) # Logvars
 	Y = torch.empty((nSeg, n, args.y_dim)) # Components
-if args.prior:
+if args.priors:
 	P = torch.empty((nSeg, args.y_dim, args.z_dim)) # Prior means
 
 
@@ -249,7 +249,7 @@ for i in range(nSeg):
 					Z[i,it*args.bs:(it+1)*args.bs,:] = batch_z.to(torch.device('cpu')).detach()
 					V[i,it*args.bs:(it+1)*args.bs,:] = batch_v.to(torch.device('cpu')).detach()
 					Y[i,it*args.bs:(it+1)*args.bs,:] = batch_y.to(torch.device('cpu')).detach()
-		if args.prior:
+		if args.priors:
 			p = model.prior_m(Y_eye)
 			P[i,:,:] = p.to(torch.device('cpu')).detach()
 	if args.save_models:
@@ -265,5 +265,5 @@ if args.latent:
 	np.save(args.out + '.z', Z.numpy())
 	np.save(args.out + '.v', V.numpy())
 	np.save(args.out + '.y', Y.numpy())
-if args.prior:
+if args.priors:
 	np.save(args.out + '.z.prior', P.numpy())
