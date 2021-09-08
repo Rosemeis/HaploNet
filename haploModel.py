@@ -81,7 +81,7 @@ class HaploNet(nn.Module):
 	def generateLikelihoods(self, x, eye):
 		return torch.stack([-torch.sum(F.binary_cross_entropy_with_logits( \
 							self.decoder(self.prior_m(eye[i].repeat(\
-								x.size(0), 1))), x, reduction='none'), dim=1) \
+								x.size(0), 1))), x, reduction="none"), dim=1) \
 							for i in range(self.y_dim)], dim=1)
 
 	# Sample and reconstruct

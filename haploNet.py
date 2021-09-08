@@ -29,7 +29,7 @@ parser.add_argument("-i", "--h_dim", type=int, default=256,
 	help="Dimension of hidden layers")
 parser.add_argument("-z", "--z_dim", type=int, default=64,
 	help="Dimension of latent representation")
-parser.add_argument("-y", "--y_dim", type=int, default=16,
+parser.add_argument("-y", "--y_dim", type=int, default=20,
 	help="Number of haplotype clusters")
 parser.add_argument("-b", "--batch", type=int, default=128,
 	help="Batch size for NN")
@@ -57,8 +57,6 @@ parser.add_argument("--split", type=float, default=1.0,
 	help="Ratio of training/validation")
 parser.add_argument("--patience", type=int, default=9,
 	help="Patience for validation loss")
-parser.add_argument("--overlap", action="store_true",
-	help="Overlap genomic windows")
 parser.add_argument("--save_models", action="store_true",
 	help="Save models")
 parser.add_argument("--debug", action="store_true",
@@ -66,7 +64,7 @@ parser.add_argument("--debug", action="store_true",
 args = parser.parse_args()
 
 ##### HaploNet #####
-print('HaploNet - Gaussian Mixture Variational Autoencoder')
+print("HaploNet - Gaussian Mixture Variational Autoencoder")
 assert args.geno is not None, "No input data (.npy)"
 
 # Global variables
@@ -88,8 +86,8 @@ else:
 
 # Create models folder if doesn't exist
 if args.save_models:
-	if not os.path.exists(args.out + '/models'):
-		os.makedirs(args.out + '/models')
+	if not os.path.exists(args.out + "/models"):
+		os.makedirs(args.out + "/models")
 
 # Read genotype matrix
 G = np.load(args.geno)
@@ -105,7 +103,7 @@ def log_normal(z, mu, logvar):
 
 # VAE loss (ELBO)
 def elbo(recon_x, x, z, z_m, z_v, p_m, p_v, y, beta):
-	rec_loss = torch.sum(F.binary_cross_entropy_with_logits(recon_x, x, reduction='none'), dim=1)
+	rec_loss = torch.sum(F.binary_cross_entropy_with_logits(recon_x, x, reduction="none"), dim=1)
 	gau_loss = log_normal(z, z_m, z_v) - log_normal(z, p_m, p_v)
 	cat_loss = torch.sum(y*torch.log(torch.clamp(y, min=1e-8)), dim=1) + LOGK
 	return torch.mean(rec_loss + gau_loss + beta*cat_loss)
@@ -144,11 +142,6 @@ if (m % args.x_dim) < args.x_dim//2:
 	nSeg = m//args.x_dim
 else:
 	nSeg = ceil(m/args.x_dim)
-if args.overlap:
-	nSeg = 2*nSeg-1
-	print("Training " + str(nSeg) + " overlapping windows.\n")
-else:
-	print("Training " + str(nSeg) + " windows.\n")
 L = torch.empty((nSeg, n, args.y_dim)) # Log-likelihoods
 Y_eye = torch.eye(args.y_dim).to(dev) # Cluster labels
 if args.latent:
@@ -160,24 +153,16 @@ if args.priors:
 
 
 ### Training
+print("Training " + str(nSeg) + " windows.\n")
 for i in range(nSeg):
 	st = time()
-	print('Window {}/{}'.format(i+1, nSeg))
+	print("Window {}/{}".format(i+1, nSeg))
 
 	# Load segment
-	if args.overlap:
-		if (i % 2) == 0:
-			if i == (nSeg-1):
-				segG = torch.from_numpy(G[((i//2)*args.x_dim):].T.astype(np.float32, order="C"))
-			else:
-				segG = torch.from_numpy(G[((i//2)*args.x_dim):(((i//2)+1)*args.x_dim)].T.astype(np.float32, order="C"))
-		else:
-			segG = torch.from_numpy(G[((i//2)*args.x_dim + args.x_dim//2):(((i+1)//2)*args.x_dim + args.x_dim//2)].T.astype(np.float32, order="C"))
+	if i == (nSeg-1):
+		segG = torch.from_numpy(G[(i*args.x_dim):].T.astype(np.float32, order="C"))
 	else:
-		if i == (nSeg-1):
-			segG = torch.from_numpy(G[(i*args.x_dim):].T.astype(np.float32, order="C"))
-		else:
-			segG = torch.from_numpy(G[(i*args.x_dim):((i+1)*args.x_dim)].T.astype(np.float32, order="C"))
+		segG = torch.from_numpy(G[(i*args.x_dim):((i+1)*args.x_dim)].T.astype(np.float32, order="C"))
 
 	# Construct sets
 	if args.split < 1.0:
@@ -188,7 +173,7 @@ for i in range(nSeg):
 								pin_memory=True)
 		validLoad = DataLoader(segG[nValid], batch_size=args.batch, \
 								pin_memory=True)
-		patLoss = float('Inf')
+		patLoss = float("Inf")
 		pat = 0
 	else:
 		# Training set
@@ -216,13 +201,13 @@ for i in range(nSeg):
 				pat = 0
 		if args.debug:
 			if args.split < 1.0:
-				print('Epoch: {}, Train -ELBO: {:.4f}, Valid -ELBO: {:.4f}'.format(epoch+1, tLoss, vLoss))
+				print("Epoch: {}, Train -ELBO: {:.4f}, Valid -ELBO: {:.4f}".format(epoch+1, tLoss, vLoss))
 			else:
-				print('Epoch: {}, Train -ELBO: {:.4f}'.format(epoch+1, tLoss))
-	print('Epoch: {}, Train -ELBO: {:.4f}'.format(epoch+1, tLoss))
+				print("Epoch: {}, Train -ELBO: {:.4f}".format(epoch+1, tLoss))
+	print("Epoch: {}, Train -ELBO: {:.4f}".format(epoch+1, tLoss))
 	if args.split < 1.0:
-		print('Epoch: {}, Valid -ELBO: {:.4f}'.format(epoch+1, vLoss))
-	print('Time elapsed: {:.4f}'.format(time()-st) + '\n')
+		print("Epoch: {}, Valid -ELBO: {:.4f}".format(epoch+1, vLoss))
+	print("Time elapsed: {:.4f}".format(time()-st) + "\n")
 
 	# Save latent and model
 	model.eval()
@@ -234,36 +219,41 @@ for i in range(nSeg):
 			batch_x = data.to(dev, non_blocking=True)
 			batch_l = model.generateLikelihoods(batch_x, Y_eye)
 			if it == (batch_n - 1):
-				L[i,it*args.batch:,:] = batch_l.to(torch.device('cpu')).detach()
+				L[i,it*args.batch:,:] = batch_l.to(torch.device("cpu")).detach()
 			else:
-				L[i,it*args.batch:(it+1)*args.batch,:] = batch_l.to(torch.device('cpu')).detach()
+				L[i,it*args.batch:(it+1)*args.batch,:] = batch_l.to(torch.device("cpu")).detach()
 
 			# Generate latent spaces
 			if args.latent:
 				batch_z, batch_v, batch_y = model.generateLatent(batch_x)
 				if it == (batch_n - 1):
-					Z[i,it*args.batch:,:] = batch_z.to(torch.device('cpu')).detach()
-					V[i,it*args.batch:,:] = batch_v.to(torch.device('cpu')).detach()
-					Y[i,it*args.batch:,:] = batch_y.to(torch.device('cpu')).detach()
+					Z[i,it*args.batch:,:] = batch_z.to(torch.device("cpu")).detach()
+					V[i,it*args.batch:,:] = batch_v.to(torch.device("cpu")).detach()
+					Y[i,it*args.batch:,:] = batch_y.to(torch.device("cpu")).detach()
 				else:
-					Z[i,it*args.batch:(it+1)*args.batch,:] = batch_z.to(torch.device('cpu')).detach()
-					V[i,it*args.batch:(it+1)*args.batch,:] = batch_v.to(torch.device('cpu')).detach()
-					Y[i,it*args.batch:(it+1)*args.batch,:] = batch_y.to(torch.device('cpu')).detach()
+					Z[i,it*args.batch:(it+1)*args.batch,:] = batch_z.to(torch.device("cpu")).detach()
+					V[i,it*args.batch:(it+1)*args.batch,:] = batch_v.to(torch.device("cpu")).detach()
+					Y[i,it*args.batch:(it+1)*args.batch,:] = batch_y.to(torch.device("cpu")).detach()
 		if args.priors:
 			p = model.prior_m(Y_eye)
-			P[i,:,:] = p.to(torch.device('cpu')).detach()
+			P[i,:,:] = p.to(torch.device("cpu")).detach()
 	if args.save_models:
-		model.to(torch.device('cpu'))
-		torch.save(model.state_dict(), args.out + '/models/seg' + str(i) + '.pt')
+		model.to(torch.device("cpu"))
+		torch.save(model.state_dict(), args.out + "/models/seg" + str(i) + ".pt")
 
 	# Release memory
 	del segG
 
 ### Saving tensors
-np.save(args.out + '.loglike', L.numpy())
+np.save(args.out + ".loglike", L.numpy())
+print("Saved log-likelihoods as " + args.out + ".loglike.npy")
 if args.latent:
-	np.save(args.out + '.z', Z.numpy())
-	np.save(args.out + '.v', V.numpy())
-	np.save(args.out + '.y', Y.numpy())
+	np.save(args.out + ".z", Z.numpy())
+	np.save(args.out + ".v", V.numpy())
+	np.save(args.out + ".y", Y.numpy())
+	print("Saved Gaussian parameters as " + args.out + ".{z,v}.npy")
+	print("Saved Categorical parameters as " + args.out + ".y.npy")
 if args.priors:
-	np.save(args.out + '.z.prior', P.numpy())
+	np.save(args.out + ".z.prior", P.numpy())
+	print("Saved prior parameters as " + args.out + ".z.prior.npy")
+print("\n")
