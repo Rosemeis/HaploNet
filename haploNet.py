@@ -37,7 +37,7 @@ parser.add_argument("-e", "--epochs", type=int, default=200,
 	help="Number of epochs")
 parser.add_argument("-r", "--rate", type=float, default=1e-3,
 	help="Learning rate for Adam")
-parser.add_argument("-w", "--beta", type=float, default=1.0,
+parser.add_argument("-w", "--beta", type=float, default=0.1,
 	help="Weight on categorical loss")
 parser.add_argument("--temp", type=float, default=0.1,
 	help="Temperature in Gumbel-Softmax")
