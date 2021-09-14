@@ -13,6 +13,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import argparse
 import os
+from datetime import datetime
 from time import time
 from math import ceil
 
@@ -66,6 +67,22 @@ args = parser.parse_args()
 ##### HaploNet #####
 print("HaploNet - Gaussian Mixture Variational Autoencoder")
 assert args.geno is not None, "No input data (.npy)"
+
+# Create log-file of arguments
+full = vars(parser.parse_args())
+deaf = vars(parser.parse_args([]))
+with open(args.out + ".args", "w") as f:
+	f.write("HaploNet v0.1\n")
+	f.write("Time: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "\n")
+	f.write("Directory: " + str(os.getcwd()) + "\n")
+	f.write("Options:\n")
+	for key in full:
+		if full[key] != deaf[key]:
+			if type(full[key]) is bool:
+				f.write("\t--" + str(key) + "\n")
+			else:
+				f.write("\t--" + str(key) + " " + str(full[key]) + "\n")
+del full, deaf
 
 # Global variables
 LOG2PI = 2*np.log(np.pi)

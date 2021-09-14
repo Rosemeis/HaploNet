@@ -1,4 +1,4 @@
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 from Cython.Build import cythonize
 import numpy
 
@@ -11,6 +11,11 @@ extensions = [Extension(
 			)]
 
 setup(
+	name="HaploNet",
+	version="0.1",
+	description="Gaussian Mixture Variational Autoencoder for Genetic Data",
+	author="Jonas Meisner",
+	python_requires=">=3.6",
     ext_modules=cythonize(extensions),
     include_dirs=[numpy.get_include()]
 )
