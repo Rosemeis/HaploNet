@@ -30,7 +30,7 @@ parser.add_argument("-i", "--h_dim", type=int, default=256,
 	help="Dimension of hidden layers")
 parser.add_argument("-z", "--z_dim", type=int, default=64,
 	help="Dimension of latent representation")
-parser.add_argument("-y", "--y_dim", type=int, default=20,
+parser.add_argument("-y", "--y_dim", type=int, default=32,
 	help="Number of haplotype clusters")
 parser.add_argument("-b", "--batch", type=int, default=128,
 	help="Batch size for NN")
@@ -38,7 +38,7 @@ parser.add_argument("-e", "--epochs", type=int, default=200,
 	help="Number of epochs")
 parser.add_argument("-r", "--rate", type=float, default=1e-3,
 	help="Learning rate for Adam")
-parser.add_argument("-w", "--beta", type=float, default=0.1,
+parser.add_argument("-w", "--beta", type=float, default=1.0,
 	help="Weight on categorical loss")
 parser.add_argument("--temp", type=float, default=0.1,
 	help="Temperature in Gumbel-Softmax")
