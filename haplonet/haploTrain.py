@@ -29,7 +29,7 @@ def main(args, deaf):
 	# Create log-file of arguments
 	full = vars(args)
 	with open(args.out + ".args", "w") as f:
-		f.write("HaploNet v0.1\n")
+		f.write("HaploNet v0.15\n")
 		f.write("Time: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "\n")
 		f.write("Directory: " + str(os.getcwd()) + "\n")
 		f.write("Options:\n")
