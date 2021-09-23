@@ -1,0 +1,13 @@
+name: haplonet
+channels:
+    - defaults
+    - conda-forge
+    - pytorch
+dependencies:
+    - python=3.9
+    - numpy
+    - scipy
+    - cython
+    - pytorch=1.9
+    - cudatoolkit=10.2
+    - scikit-allel
