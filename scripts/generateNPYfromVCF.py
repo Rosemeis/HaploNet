@@ -35,7 +35,6 @@ vcf = allel.read_vcf(args.vcf)
 if args.length is not None:
 	assert args.chromosome is not None, "Please specify chromosome number!"
 	print("Generating median window base positions.")
-	C = vcf['variants/CHROM']
 	S = vcf['variants/POS']
 	if (S.shape[0] % args.length) < args.length//2:
 		nSeg = S.shape[0]//args.length
@@ -44,12 +43,12 @@ if args.length is not None:
 	M = np.zeros((nSeg, 4), dtype=int)
 	for i in range(nSeg):
 		if i == (nSeg-1):
-			M[i,0] = C[0]
+			M[i,0] = args.chromosome
 			M[i,1] = S[i*args.length]
 			M[i,2] = ceil(np.median(S[(i*args.length):]))
 			M[i,3] = S[-1]
 		else:
-			M[i,0] = C[0]
+			M[i,0] = args.chromosome
 			M[i,1] = S[i*args.length]
 			M[i,2] = ceil(np.median(S[(i*args.length):((i+1)*args.length)]))
 			M[i,3] = S[(i+1)*args.length]
