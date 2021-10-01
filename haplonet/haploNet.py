@@ -122,7 +122,7 @@ def main():
 		help="Only save median base positions, no .npy output")
 	parser_c.add_argument("-o", "--out", default="input",
 		help="Output filepath")
-	parser.add_argument("--unphased", action="store_true",
+	parser_c.add_argument("--unphased", action="store_true",
 		help="(PROTOTYPE) Toggle for unphased genotype data")
 
 	# Parse arguments
