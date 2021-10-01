@@ -31,7 +31,7 @@ You can now run HaploNet with the `haplonet` command.
 ## Usage
 For phased haplotype data for a single chromosome as a VCF file of *M* SNPs and *N* individuals, we can generate a *M x 2N* haplotype matrix using scikit-allel.
 ```bash
-python scripts/generateNPYfromVCF.py --vcf chr1.vcf.gz --out chr1
+haplonet convert --vcf chr1.vcf.gz --out chr1
 # Saves int8 NumPy matrix in binary format (chr1.npy)
 ```
 
@@ -45,6 +45,7 @@ haplonet -h
 haplonet train -h # training haplonet
 haplonet admix -h # estimate ancestry
 haplonet pca -h # perform pca
+haplonet convert -h # convert VCF file to NumPy binary format
 ```
 
 All the following analyses assume that HaploNet has been run for all chromosomes such that the filepaths of the log-likelihoods for each chromosomes are in one file. The argument "--like" can be used if you only have one chromosome or merged file.
