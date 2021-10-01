@@ -20,6 +20,6 @@ setup(
 		"console_scripts": ["haplonet=haplonet.haploNet:main"]
 	},
 	python_requires=">=3.6",
-    ext_modules=cythonize(extensions),
-    include_dirs=[numpy.get_include()]
+	ext_modules=cythonize(extensions),
+	include_dirs=[numpy.get_include()]
 )

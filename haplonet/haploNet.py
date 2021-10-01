@@ -4,7 +4,7 @@ Main caller of the HaploNet framework.
 
 import argparse
 import sys
-from haplonet import haploTrain, admixNN, pcaNN
+from haplonet import haploTrain, admixNN, pcaNN, convertVCF
 
 # Main function
 def main():
@@ -17,6 +17,8 @@ def main():
 	parser_t = subparsers.add_parser('train')
 	parser_t.add_argument("-g", "--geno",
 		help="Genotype file in binary NumPy format")
+	parser_t.add_argument("-v", "--vcf",
+		help="Genotype file in VCF format")
 	parser_t.add_argument("-x", "--x_dim", type=int, default=1024,
 		help="Dimension of input data - window size")
 	parser_t.add_argument("-i", "--h_dim", type=int, default=256,
@@ -51,6 +53,8 @@ def main():
 		help="Ratio of training/validation")
 	parser_t.add_argument("--patience", type=int, default=9,
 		help="Patience for validation loss")
+	parser_t.add_argument("--overlap", type=int, default=0,
+		help="Add overlapping SNPs to each end of a window")
 	parser_t.add_argument("--save_models", action="store_true",
 		help="Save models")
 	parser_t.add_argument("--debug", action="store_true",
@@ -106,6 +110,19 @@ def main():
 	parser_p.add_argument("--loadings", action="store_true",
 		help="Save loadings of SVD")
 
+	# haplonet convert
+	parser_c = subparsers.add_parser('convert')
+	parser_c.add_argument("-l", "--length", metavar="INT", type=int,
+		help="Generate median base positions for defined window lengths")
+	parser_c.add_argument("-c", "--chromosome", metavar="INT", type=int,
+		help="Specify chromosome number to avoid ambiguity")
+	parser_c.add_argument("-w", "--windows", action="store_true",
+		help="Only save median base positions, no .npy output")
+	parser_c.add_argument("-o", "--out", default="input",
+		help="Output filepath")
+	parser.add_argument("--unphased", action="store_true",
+		help="(PROTOTYPE) Toggle for unphased genotype data")
+
 	# Parse arguments
 	args = parser.parse_args()
 	if len(sys.argv) < 2:
@@ -132,6 +149,12 @@ def main():
 			sys.exit()
 		else:
 			pcaNN.main(args)
+	if sys.argv[1] == "convert":
+		if len(sys.argv) < 3:
+			parser_c.print_help()
+			sys.exit()
+		else:
+			convertVCF.main(args)
 
 ##### Define main #####
 if __name__ == "__main__":

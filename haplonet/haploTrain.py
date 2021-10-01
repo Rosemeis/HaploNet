@@ -133,10 +133,12 @@ def main(args, deaf):
 		print("Window {}/{}".format(i+1, nSeg))
 
 		# Load segment
-		if i == (nSeg-1):
-			segG = torch.from_numpy(G[(i*args.x_dim):].T.astype(np.float32, order="C"))
+		if i == 0:
+			segG = torch.from_numpy(G[(i*args.x_dim):((i+1)*args.x_dim + args.overlap)].T.astype(np.float32, order="C"))
+		elif i == (nSeg-1):
+			segG = torch.from_numpy(G[(i*args.x_dim - args.overlap):].T.astype(np.float32, order="C"))
 		else:
-			segG = torch.from_numpy(G[(i*args.x_dim):((i+1)*args.x_dim)].T.astype(np.float32, order="C"))
+			segG = torch.from_numpy(G[(i*args.x_dim - args.overlap):((i+1)*args.x_dim + args.overlap)].T.astype(np.float32, order="C"))
 
 		# Construct sets
 		if args.split < 1.0:
