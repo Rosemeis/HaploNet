@@ -112,6 +112,8 @@ def main():
 
 	# haplonet convert
 	parser_c = subparsers.add_parser('convert')
+	parser_c.add_argument("-v", "--vcf",
+		help="Input vcf-file of genotypes")
 	parser_c.add_argument("-l", "--length", metavar="INT", type=int,
 		help="Generate median base positions for defined window lengths")
 	parser_c.add_argument("-c", "--chromosome", metavar="INT", type=int,
