@@ -208,6 +208,16 @@ cpdef float rmse2d(float[:,:] M1, float[:,:] M2):
 	res = res/(<float>(N*K))
 	return sqrt(res)
 
+# Root mean squared error (1D)
+cpdef float rmse1d(float[::1] v1, float[::1] v2):
+	cdef int N = v1.shape[0]
+	cdef int i
+	cdef float res = 0.0
+	for i in range(N):
+		res = res + (v1[i] - v2[i])*(v1[i] - v2[i])
+	res = res/<float>N
+	return sqrt(res)
+
 ##### Cython functions for PCA in HaploNet #####
 # Standardize cluster matrix
 cpdef standardizeY(signed char[:,::1] L, float[::1] F, float[:,::1] Y, int t):
@@ -218,17 +228,6 @@ cpdef standardizeY(signed char[:,::1] L, float[::1] F, float[:,::1] Y, int t):
 		for i in prange(N, num_threads=t):
 			for s in range(S):
 				Y[i, s] = (L[i, s] - 2*F[s])/sqrt(2*F[s]*(1 - F[s]))
-
-# Standardize unphased cluster matrix
-cpdef standardizeY_unphased(signed char[:,::1] L, float[::1] F, \
-							float[:,::1] Y, int t):
-	cdef int N = L.shape[0]
-	cdef int S = L.shape[1]
-	cdef int i, s
-	with nogil:
-		for i in prange(N, num_threads=t):
-			for s in range(S):
-				Y[i, s] = (L[i, s] - F[s])/sqrt(F[s]*(1 - F[s]))
 
 # Covariance estimation
 cpdef covarianceY(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
@@ -244,16 +243,80 @@ cpdef covarianceY(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
 				C[i, j] /= float(S)
 				C[j, i] = C[i, j]
 
-# Covariance estimation - unphased
-cpdef covarianceY_unphased(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
+# Iterative - Frequency
+cpdef emFrequency(float[:,:,::1] L, float[::1] F, float[:,:,::1] H, int t):
+	cdef int W = L.shape[0]
+	cdef int N = L.shape[1]
+	cdef int C = L.shape[2]
+	cdef int w, i, c
+	cdef float sumC, sumN
+	with nogil:
+		for w in prange(W, num_threads=t):
+			for i in range(N):
+				sumC = 0.0
+				for c in range(C):
+					H[w, i, c] = L[w, i, c]*F[w*C + c]
+					sumC = sumC + H[w, i, c]
+				for c in range(C):
+					H[w, i, c] = H[w, i, c]/sumC
+			for c in range(C):
+				sumN = 0.0
+				for i in range(N):
+					sumN = sumN + H[w, i, c]
+				F[w*C + c] = sumN/<float>N
+
+# Iterative - Center
+cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, \
+				float[:,::1] Y, int W, int C, int t):
 	cdef int N = L.shape[0]
-	cdef int S = L.shape[1]
-	cdef int i, j, s
+	cdef int i, w, c
+	cdef float sumC
 	with nogil:
 		for i in prange(N, num_threads=t):
-			for j in range(i, N):
-				for s in range(S):
-					C[i, j] += (L[i, s] - F[s])*(L[j, s] - F[s])/ \
-								(F[s]*(1 - F[s]))
-				C[i, j] /= float(S)
-				C[j, i] = C[i, j]
+			for w in range(W):
+				sumC = 0.0
+				for c in range(C):
+					H[i, w*C + c] = L[i, w*C + c]*F[w*C + c]
+					sumC = sumC + H[i, w*C + c]
+				for c in range(C):
+					H[i, w*C + c] = H[i, w*C + c]/sumC
+		for i in prange(0, N, 2, num_threads=t):
+			for w in range(W):
+				for c in range(C):
+					Y[i//2, w*C + c] = H[i+0, w*C + c] + H[i+1, w*C + c] - 2*F[w*C + c]
+
+# Iterative - PCAngsd
+cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, \
+				float[:,::1] Y, float[:,:] U, float[:] s, float[:,:] V, \
+				int W, int C, int t):
+	cdef int N = L.shape[0]
+	cdef int K = s.shape[0]
+	cdef int i, k, w, c
+	cdef float sumC
+	with nogil:
+		for i in prange(N, num_threads=t):
+			for w in range(W):
+				sumC = 0.0
+				for c in range(C):
+					Y[i//2, w*C + c] = 0.0
+					for k in range(K):
+						Y[i//2, w*C + c] += U[i//2, k]*s[k]*V[k, w*C + c]
+					Y[i//2, w*C + c] = min(max(Y[i//2, w*C + c] + 2*F[w*C + c], 1e-7), 1-(1e-7))
+					H[i, w*C + c] = L[i, w*C + c]*Y[i//2, w*C + c]
+					sumC = sumC + H[i, w*C + c]
+				for c in range(C):
+					H[i, w*C + c] = H[i, w*C + c]/sumC
+		for i in prange(0, N, 2, num_threads=t):
+			for w in range(W):
+				for c in range(C):
+					Y[i//2, w*C + c] = H[i+0, w*C + c] + H[i+1, w*C + c] - 2*F[w*C + c]
+
+# Iterative - Standardize
+cpdef standardizeE(float[:,::1] Y, float[::1] F, int t):
+	cdef int N = Y.shape[0]
+	cdef int S = Y.shape[1]
+	cdef int i, s
+	with nogil:
+		for i in prange(N, num_threads=t):
+			for s in range(S):
+				Y[i, s] = Y[i, s]/sqrt(2*F[s]*(1 - F[s]))

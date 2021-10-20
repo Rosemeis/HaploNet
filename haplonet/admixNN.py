@@ -40,8 +40,12 @@ def main(args):
 	if args.filelist is not None:
 		L_list = []
 		with open(args.filelist) as f:
+			file_c = 1
 			for chr in f:
 				L_list.append(np.load(chr.strip("\n")))
+				print("\rParsed file " + str(file_c), end="")
+				file_c += 1
+			print(".")
 		L = np.concatenate(L_list, axis=0)
 		del L_list
 	else:

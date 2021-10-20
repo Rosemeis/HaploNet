@@ -103,8 +103,8 @@ def main():
 		help="Number of threads")
 	parser_p.add_argument("-o", "--out", default="haplonet.pca",
 		help="Output path/name")
-	parser_p.add_argument("--unphased", action="store_true",
-		help="(Not ready) Toggle for unphased genotype data")
+	parser_p.add_argument("--iterative", type=int,
+		help="Use iterative probabilistic approach")
 	parser_p.add_argument("--freqs", action="store_true",
 		help="Save haplotype cluster frequencies")
 	parser_p.add_argument("--loadings", action="store_true",
