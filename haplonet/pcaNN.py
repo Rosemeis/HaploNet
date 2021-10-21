@@ -41,20 +41,21 @@ def main(args):
 		assert not args.cov, "Iterative approach doesn't support cov estimation!"
 
 	# Load data (and concatentate across windows)
+	print("Loading log-likelihood file(s)")
 	if args.filelist is not None:
 		L_list = []
 		with open(args.filelist) as f:
 			file_c = 1
 			for chr in f:
 				L_list.append(np.load(chr.strip("\n")))
-				print("\rParsed file " + str(file_c), end="")
+				print("\rParsed file #" + str(file_c), end="")
 				file_c += 1
 			print(".")
 		L = np.concatenate(L_list, axis=0)
 		del L_list
 	else:
 		L = np.load(args.like)
-	print("Loaded data.", L.shape)
+	print("Loaded {} haplotypes, {} windows, {} clusters.".format(L.shape[1], L.shape[0], L.shape[2]))
 	W, N, C = L.shape
 
 	# Convert log-like to like
