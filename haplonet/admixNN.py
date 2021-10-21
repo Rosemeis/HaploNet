@@ -34,10 +34,10 @@ def main(args):
 	# Check input
 	assert (args.filelist is not None) or (args.like is not None), \
 			"No input data (-f or -l)"
-	assert args.K is not None, "Must provide number of ancestral components (-K)"
+	assert args.K is not None, "Must provide number of ancestral components (-K)!"
 
 	# Load data (and concatentate across windows)
-	print("Loading log-likelihood file(s)")
+	print("Loading log-likelihood file(s).")
 	if args.filelist is not None:
 		L_list = []
 		with open(args.filelist) as f:
@@ -70,11 +70,11 @@ def main(args):
 	# Initialization log-likelihood
 	shared_cy.logLike(L, F, Q, logVec, args.threads)
 	curLL = np.sum(logVec, dtype=float)
-	print("Iteration 0: " + str(curLL))
+	print("(0) Log-likelihood: {}".format(np.round(curLL, 5)))
 
 	# Acceleration containers
 	if not args.no_accel:
-		print("Using accelerated EM scheme (SqS3)")
+		print("Using accelerated EM scheme (SqS3).")
 		diffF_1 = np.zeros((W, args.K, C), dtype=np.float64)
 		diffF_2 = np.zeros((W, args.K, C), dtype=np.float64)
 		diffF_3 = np.zeros((W, args.K, C), dtype=np.float64)
@@ -119,7 +119,7 @@ def main(args):
 		if i % args.check == 0:
 			shared_cy.logLike(L, F, Q, logVec, args.threads)
 			newLL = np.sum(logVec, dtype=float)
-			print("Iteration " + str(i) + ": " + str(newLL))
+			print("({}) Log-likelihood: {}".format(i, np.round(newLL, 5)))
 			if abs(newLL - curLL) < args.tole:
 				print("EM algorithm converged.")
 				break

@@ -4,7 +4,6 @@ Main caller of the HaploNet framework.
 
 import argparse
 import sys
-from haplonet import haploTrain, admixNN, pcaNN, convertVCF
 
 # Main function
 def main():
@@ -103,6 +102,8 @@ def main():
 		help="Number of threads")
 	parser_p.add_argument("-o", "--out", default="haplonet.pca",
 		help="Output path/name")
+	parser_p.add_argument("--dosage", action="store_true",
+		help="Perform dosage SVD") 
 	parser_p.add_argument("--iterative", type=int,
 		help="Use iterative probabilistic approach")
 	parser_p.add_argument("--freqs", action="store_true",
@@ -137,6 +138,7 @@ def main():
 			parser_t.print_help()
 			sys.exit()
 		else:
+			from haplonet import haploTrain
 			deaf = vars(parser_t.parse_args([]))
 			haploTrain.main(args, deaf)
 	if sys.argv[1] == "admix":
@@ -144,18 +146,21 @@ def main():
 			parser_a.print_help()
 			sys.exit()
 		else:
+			from haplonet import admixNN
 			admixNN.main(args)
 	if sys.argv[1] == "pca":
 		if len(sys.argv) < 3:
 			parser_p.print_help()
 			sys.exit()
 		else:
+			from haplonet import pcaNN
 			pcaNN.main(args)
 	if sys.argv[1] == "convert":
 		if len(sys.argv) < 3:
 			parser_c.print_help()
 			sys.exit()
 		else:
+			from haplonet import convertVCF
 			convertVCF.main(args)
 
 ##### Define main #####

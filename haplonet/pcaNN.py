@@ -23,7 +23,7 @@ def estimateF(L, threads):
 		shared_cy.emFrequency(L, F, H, threads)
 		diff = shared_cy.rmse1d(F, F_prev)
 		if diff < 1e-4:
-			print("EM (Haplotype frequencies) has converged. Iteration: " + str(i+1))
+			print("EM (Haplotype frequencies) has converged ({}).".format(i+1))
 			break
 		F_prev = np.copy(F)
 	del H
@@ -37,11 +37,11 @@ def main(args):
 	# Check input
 	assert (args.filelist is not None) or (args.like is not None), \
 			"No input data (-f or -l)"
-	if args.iterative is not None:
-		assert not args.cov, "Iterative approach doesn't support cov estimation!"
+	if (args.iterative is not None) or args.dosage:
+		assert not args.cov, "Probabilistic approaches don't support cov estimation!"
 
 	# Load data (and concatentate across windows)
-	print("Loading log-likelihood file(s)")
+	print("Loading log-likelihood file(s).")
 	if args.filelist is not None:
 		L_list = []
 		with open(args.filelist) as f:
@@ -61,7 +61,7 @@ def main(args):
 	# Convert log-like to like
 	shared_cy.createLikes(L, args.threads)
 
-	if args.iterative is not None:
+	if (args.iterative is not None) or args.dosage:
 		# Estimate haplotype cluster frequencies
 		F = estimateF(L, args.threads)
 		if args.freqs:
@@ -75,19 +75,20 @@ def main(args):
 
 		# Generate E
 		shared_cy.generateE(L, F, H, Y, W, C, args.threads)
-		print("Iterative estimation of haplotype cluster frequencies.")
-		for i in range(100):
-			U, s, V = svds(Y, k=args.iterative)
-			shared_cy.generateP(L, F, H, Y, U, s, V, W, C, args.threads)
-			del U, s, V
-			if i > 0:
-				diff = shared_cy.rmse2d(Y, Y_prev)
-				print("Iteration: " + str(i+1) + ". Diff: " + str(diff))
-				if diff < 5e-5:
-					print("Iterative estimations have converged.")
-					break
-			Y_prev = np.copy(Y)
-		del L, H, Y_prev
+		if args.iterative is not None:
+			print("Iterative estimation of haplotype cluster frequencies.")
+			for i in range(100):
+				U, s, V = svds(Y, k=args.iterative)
+				shared_cy.generateP(L, F, H, Y, U, s, V, W, C, args.threads)
+				if i > 0:
+					diff = shared_cy.rmse2d(Y, Y_prev)
+					print("({}) Diff: {}".format(i, np.round(diff, 12)))
+					if diff < 5e-5:
+						print("Iterative estimations have converged.")
+						break
+				Y_prev = np.copy(Y)
+			del U, s, V, Y_prev
+		del L, H
 
 		# Filter out low frequency haplotype clusters
 		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
@@ -113,7 +114,6 @@ def main(args):
 		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
 		F = F[mask]
 		L = np.ascontiguousarray(L[:, mask])
-		print("After filtering with threshold (" + str(args.filter) + "): ", L.shape)
 
 	# Covariance mode
 	if args.cov:
@@ -127,7 +127,7 @@ def main(args):
 		np.savetxt(args.out + ".cov", Cov, fmt="%.7f")
 		print("Saved covariance matrix as " + args.out + ".cov")
 	else:
-		if args.iterative is None:
+		if (args.iterative is None) and (not args.dosage):
 			Y = np.zeros(L.shape, dtype=np.float32)
 			shared_cy.standardizeY(L, F, Y, args.threads)
 
@@ -138,12 +138,12 @@ def main(args):
 
 		# Save matrices
 		np.savetxt(args.out + ".eigenvecs", U[:, ::-1], fmt="%.7f")
-		print("Saved eigenvectors as " + args.out + ".eigenvecs.")
+		print("Saved eigenvectors as " + args.out + ".eigenvecs")
 		np.savetxt(args.out + ".eigenvals", s[::-1]**2/float(Y.shape[1]), fmt="%.7f")
-		print("Saved eigenvalues as " + args.out + ".eigenvals.")
+		print("Saved eigenvalues as " + args.out + ".eigenvals")
 		if args.loadings:
 			np.savetxt(args.out + ".loadings", V[::-1,:].T, fmt="%.7f")
-			print("Saved loadings as " + args.out + ".loadings.")
+			print("Saved loadings as " + args.out + ".loadings")
 
 
 ##### Main exception #####
