@@ -292,17 +292,20 @@ cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, \
 	cdef int N = L.shape[0]
 	cdef int K = s.shape[0]
 	cdef int i, k, w, c
-	cdef float sumC
+	cdef float sumC, sumK
 	with nogil:
 		for i in prange(N, num_threads=t):
 			for w in range(W):
-				sumC = 0.0
+				sumK = 0.0
 				for c in range(C):
 					Y[i//2, w*C + c] = 0.0
 					for k in range(K):
 						Y[i//2, w*C + c] += U[i//2, k]*s[k]*V[k, w*C + c]
 					Y[i//2, w*C + c] = min(max(Y[i//2, w*C + c] + 2*F[w*C + c], 1e-7), 1-(1e-7))
-					H[i, w*C + c] = L[i, w*C + c]*Y[i//2, w*C + c]
+					sumK = sumK + Y[i//2, w*C + c]
+				sumC = 0.0
+				for c in range(C):
+					H[i, w*C + c] = L[i, w*C + c]*(Y[i//2, w*C + c]/sumK)
 					sumC = sumC + H[i, w*C + c]
 				for c in range(C):
 					H[i, w*C + c] = H[i, w*C + c]/sumC
