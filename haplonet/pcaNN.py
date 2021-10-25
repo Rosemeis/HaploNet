@@ -71,7 +71,7 @@ def main(args):
 		L = np.swapaxes(L, 0, 1)
 		L = np.ascontiguousarray(L.reshape(N, W*C))
 		H = np.zeros(L.shape, dtype=np.float32) # Help container
-		Y = np.zeros((N, W*C), dtype=np.float32) # Pi container
+		Y = np.zeros((N//2, W*C), dtype=np.float32) # Pi container
 
 		# Generate E
 		shared_cy.generateE(L, F, H, Y, W, C, args.threads)
