@@ -82,7 +82,7 @@ def main(args):
 				shared_cy.generateP(L, F, H, Y, U, s, V, W, C, args.threads)
 				if i > 0:
 					diff = shared_cy.rmse2d(Y, Y_prev)
-					print("({}) Diff: {}".format(i, np.round(diff, 12)))
+					print("({}) Diff: {}".format(i, np.round(diff, 12)), flush=True)
 					if diff < 5e-5:
 						print("Iterative estimations have converged.")
 						break

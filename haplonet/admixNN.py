@@ -119,7 +119,7 @@ def main(args):
 		if i % args.check == 0:
 			shared_cy.logLike(L, F, Q, logVec, args.threads)
 			newLL = np.sum(logVec, dtype=float)
-			print("({}) Log-likelihood: {}".format(i, np.round(newLL, 5)))
+			print("({}) Log-likelihood: {}".format(i, np.round(newLL, 5)), flush=True)
 			if abs(newLL - curLL) < args.tole:
 				print("EM algorithm converged.")
 				break
