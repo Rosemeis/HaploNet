@@ -24,6 +24,9 @@ cpdef createLikes(float[:,:,::1] L, int t):
 				for c in range(C):
 					L[w, i, c] = L[w, i, c] - tmpMax
 					L[w, i, c] = exp(L[w, i, c])
+					tmpSum = tmpSum + L[w, i, c]
+				for c in range(C):
+					L[w, i, c] = L[w, i, c]/tmpSum
 
 
 # Main EM iteration
