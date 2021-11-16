@@ -12,7 +12,7 @@ extensions = [Extension(
 
 setup(
 	name="HaploNet",
-	version="0.15",
+	version="0.2",
 	description="Gaussian Mixture Variational Autoencoder for Genetic Data",
 	author="Jonas Meisner",
 	packages=["haplonet"],

@@ -1,6 +1,6 @@
 """
 HaploNet.
-Generate .npy file from VCF file.
+Generate .npy file from VCF file and generate window statistics.
 """
 
 __author__ = "Jonas Meisner"
@@ -44,12 +44,8 @@ def main(args):
 	# Save .npy file in np.int8
 	if not args.windows:
 		G = vcf['calldata/GT']
-		if args.unphased:
-			np.save(args.out, np.sum(G, axis=2).astype(np.int8))
-			print("Saved unphased genotypes as " + args.out + ".npy")
-		else:
-			np.save(args.out, G.reshape(G.shape[0], -1))
-			print("Saved phased genotypes as " + args.out + ".npy")
+		np.save(args.out, G.reshape(G.shape[0], -1))
+		print("Saved phased genotypes as " + args.out + ".npy")
 
 
 ##### Main exception #####

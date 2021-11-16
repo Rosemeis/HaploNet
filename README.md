@@ -38,6 +38,9 @@ haplonet convert --vcf chr1.vcf.gz --out chr1
 HaploNet can now be trained directly on the generated haplotype matrix as follows (using default parameters and on GPU):
 ```bash
 haplonet train --geno chr1.npy --cuda --out haplonet
+
+# You can also use the VCF directly as input
+haplonet train --vcf chr1.vcf.gz --cuda --out haplonet
 ```
 HaploNet outputs the neural network log-likelihoods by default which are used to infer global population structure (PCA and admixture). With the '--latent' argument, the parameters of the learnt latent spaces of the GMVAE can be saved as well. See all available options in HaploNet with the following command:
 ```bash

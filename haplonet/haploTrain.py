@@ -23,13 +23,15 @@ from haplonet import haploModel
 # Main function
 def main(args, deaf):
 	##### HaploNet #####
-	print("HaploNet - Gaussian Mixture Variational Autoencoder")
-	assert args.geno is not None, "No input data (.npy)"
+	print("HaploNet v0.2")
+	print("Gaussian Mixture Variational Autoencoder.")
+	assert (args.geno is not None) or (args.vcf is not None), \
+			"No input data (--geno or --vcf)!"
 
 	# Create log-file of arguments
 	full = vars(args)
 	with open(args.out + ".args", "w") as f:
-		f.write("HaploNet v0.15\n")
+		f.write("HaploNet v0.2\n")
 		f.write("Time: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "\n")
 		f.write("Directory: " + str(os.getcwd()) + "\n")
 		f.write("Options:\n")
@@ -53,7 +55,7 @@ def main(args, deaf):
 
 	# Check parsing
 	if args.cuda:
-		assert torch.cuda.is_available(), "Setup doesn't have GPU support"
+		assert torch.cuda.is_available(), "Setup doesn't have GPU support!"
 		dev = torch.device("cuda")
 	else:
 		dev = torch.device("cpu")
@@ -63,10 +65,17 @@ def main(args, deaf):
 		if not os.path.exists(args.out + "/models"):
 			os.makedirs(args.out + "/models")
 
-	# Read genotype matrix
-	G = np.load(args.geno)
+
+	### Read genotype matrix or VCF-file
+	print("\rLoading data...", end="")
+	if args.geno is not None:
+		G = np.load(args.geno)
+	else:
+		import allel
+		vcf = allel.read_vcf(args.vcf)
+		G = vcf['calldata/GT'].reshape(vcf['calldata/GT'].shape[0], -1)
 	m, n = G.shape
-	print("Loaded " + str(n) + " chromosomes and " + str(m) + " variants.")
+	print("\rLoaded {} chromosomes and {} variants.".format(n, m))
 
 
 	### Loss functions
@@ -75,7 +84,7 @@ def main(args, deaf):
 		return -0.5*torch.sum(torch.pow(z - mu, 2)*torch.exp(-logvar) + logvar + \
 			LOG2PI, dim=1)
 
-	# VAE loss (ELBO)
+	# GMVAE loss - negative ELBO
 	def elbo(recon_x, x, z, z_m, z_v, p_m, p_v, y, beta):
 		rec_loss = torch.sum(F.binary_cross_entropy_with_logits(recon_x, x, reduction="none"), dim=1)
 		gau_loss = log_normal(z, z_m, z_v) - log_normal(z, p_m, p_v)
@@ -122,12 +131,10 @@ def main(args, deaf):
 		Z = torch.empty((nSeg, n, args.z_dim)) # Means
 		V = torch.empty((nSeg, n, args.z_dim)) # Logvars
 		Y = torch.empty((nSeg, n, args.y_dim)) # Components
-	if args.priors:
-		P = torch.empty((nSeg, args.y_dim, args.z_dim)) # Prior means
 
 
 	### Training
-	print("Training " + str(nSeg) + " windows.\n")
+	print("Training {} windows.\n".format(nSeg))
 	for i in range(nSeg):
 		st = time()
 		print("Window {}/{}".format(i+1, nSeg))
@@ -145,8 +152,8 @@ def main(args, deaf):
 			permVec = np.random.permutation(n)
 			nTrain = permVec[:int(n*args.split)]
 			nValid = permVec[int(n*args.split):]
-			trainLoad = DataLoader(segG[nTrain], batch_size=args.batch, shuffle=True, \
-									pin_memory=True)
+			trainLoad = DataLoader(segG[nTrain], batch_size=args.batch, \
+									shuffle=True, pin_memory=True)
 			validLoad = DataLoader(segG[nValid], batch_size=args.batch, \
 									pin_memory=True)
 			patLoss = float("Inf")
@@ -157,10 +164,10 @@ def main(args, deaf):
 									pin_memory=True)
 
 		# Define model
-		model = haploModel.HaploNet(segG.size(1), args.h_dim, args.z_dim, \
-									args.y_dim, args.temp)
+		model = haploModel.GMVAENet(segG.size(1), args.h_dim, args.z_dim, \
+										args.y_dim, args.deep, args.temp)
 		model.to(dev)
-		optimizer = torch.optim.Adam(model.parameters(), lr=args.rate)
+		optimizer = torch.optim.AdamW(model.parameters(), lr=args.rate)
 
 		# Run training (and validation)
 		for epoch in range(args.epochs):
@@ -183,9 +190,9 @@ def main(args, deaf):
 		print("Epoch: {}, Train -ELBO: {:.4f}".format(epoch+1, tLoss))
 		if args.split < 1.0:
 			print("Epoch: {}, Valid -ELBO: {:.4f}".format(epoch+1, vLoss))
-		print("Time elapsed: {:.4f}".format(time()-st) + "\n")
+		print("Time elapsed: {:.4f}\n".format(time()-st))
 
-		# Save latent and model
+		# Generate likelihoods and optionally save latent spaces and model
 		model.eval()
 		batch_n = ceil(n/args.batch)
 		saveLoad = DataLoader(segG, batch_size=args.batch, pin_memory=True)
@@ -210,9 +217,6 @@ def main(args, deaf):
 						Z[i,it*args.batch:(it+1)*args.batch,:] = batch_z.to(torch.device("cpu")).detach()
 						V[i,it*args.batch:(it+1)*args.batch,:] = batch_v.to(torch.device("cpu")).detach()
 						Y[i,it*args.batch:(it+1)*args.batch,:] = batch_y.to(torch.device("cpu")).detach()
-			if args.priors:
-				p = model.prior_m(Y_eye)
-				P[i,:,:] = p.to(torch.device("cpu")).detach()
 		if args.save_models:
 			model.to(torch.device("cpu"))
 			torch.save(model.state_dict(), args.out + "/models/seg" + str(i) + ".pt")
@@ -226,12 +230,9 @@ def main(args, deaf):
 	if args.latent:
 		np.save(args.out + ".z", Z.numpy())
 		np.save(args.out + ".v", V.numpy())
-		np.save(args.out + ".y", Y.numpy())
 		print("Saved Gaussian parameters as " + args.out + ".{z,v}.npy")
+		np.save(args.out + ".y", Y.numpy())
 		print("Saved Categorical parameters as " + args.out + ".y.npy")
-	if args.priors:
-		np.save(args.out + ".z.prior", P.numpy())
-		print("Saved prior parameters as " + args.out + ".z.prior.npy")
 	print("\n")
 
 

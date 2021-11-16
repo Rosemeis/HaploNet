@@ -19,41 +19,41 @@ def main():
 	parser_t.add_argument("-v", "--vcf",
 		help="Genotype file in VCF format")
 	parser_t.add_argument("-x", "--x_dim", type=int, default=1024,
-		help="Dimension of input data - window size")
+		help="Dimension of input data - window size (1024)")
 	parser_t.add_argument("-i", "--h_dim", type=int, default=256,
-		help="Dimension of hidden layers")
+		help="Dimension of hidden layers (256)")
 	parser_t.add_argument("-z", "--z_dim", type=int, default=64,
-		help="Dimension of latent representation")
+		help="Dimension of latent representation (64)")
 	parser_t.add_argument("-y", "--y_dim", type=int, default=32,
-		help="Number of haplotype clusters")
+		help="Number of haplotype clusters (32)")
 	parser_t.add_argument("-b", "--batch", type=int, default=128,
-		help="Batch size for NN")
+		help="Batch size for NN (128)")
 	parser_t.add_argument("-e", "--epochs", type=int, default=200,
-		help="Number of epochs")
+		help="Number of epochs (200)")
 	parser_t.add_argument("-r", "--rate", type=float, default=1e-3,
-		help="Learning rate for Adam")
-	parser_t.add_argument("-w", "--beta", type=float, default=1.0,
-		help="Weight on categorical loss")
-	parser_t.add_argument("--temp", type=float, default=0.1,
-		help="Temperature in Gumbel-Softmax")
-	parser_t.add_argument("-c", "--cuda", action="store_true",
-		help="Toggle GPU training")
+		help="Learning rate for AdamW (1e-3)")
 	parser_t.add_argument("-s", "--seed", type=int,
 		help="Set random seed")
-	parser_t.add_argument("-l", "--latent", action="store_true",
-		help="Save latent space parameters")
-	parser_t.add_argument("-p", "--priors", action="store_true",
-		help="Save means of priors (E[p(z | y)])")
+	parser_t.add_argument("-c", "--cuda", action="store_true",
+		help="Toggle GPU training")
 	parser_t.add_argument("-t", "--threads", type=int,
 		help="Number of threads")
 	parser_t.add_argument("-o", "--out", default="haplonet",
-		help="Output path")
+		help="Output path/name ('haplonet')")
+	parser_t.add_argument("--beta", type=float, default=1.0,
+		help="Weight on categorical loss (1.0)")
+	parser_t.add_argument("--temp", type=float, default=0.1,
+		help="Temperature in Gumbel-Softmax (0.1)")
+	parser_t.add_argument("--deep", type=int, default=0,
+		help="Number of extra hidden layers in GMVAE model (0)")
+	parser_t.add_argument("--latent", action="store_true",
+		help="Save latent space parameters")
 	parser_t.add_argument("--split", type=float, default=1.0,
-		help="Ratio of training/validation")
+		help="Ratio of training/validation (1.0)")
 	parser_t.add_argument("--patience", type=int, default=9,
-		help="Patience for validation loss")
+		help="Patience for validation loss (9)")
 	parser_t.add_argument("--overlap", type=int, default=0,
-		help="Add overlapping SNPs to each end of a window")
+		help="Add overlapping SNPs to each end of a window (0)")
 	parser_t.add_argument("--save_models", action="store_true",
 		help="Save models")
 	parser_t.add_argument("--debug", action="store_true",
@@ -68,21 +68,21 @@ def main():
 	parser_a.add_argument("-K", "--K", type=int,
 		help="Number of ancestral components")
 	parser_a.add_argument("-i", "--iter", type=int, default=5000,
-		help="Maximum number of iterations")
+		help="Maximum number of iterations (5000)")
 	parser_a.add_argument("-t", "--threads", type=int, default=1,
-		help="Number of threads")
+		help="Number of threads (1)")
 	parser_a.add_argument("-c", "--check", type=int, default=50,
-		help="Calculating loglike for every i-th iteration")
+		help="Calculating loglike for every i-th iteration (50)")
 	parser_a.add_argument("--check_q", action="store_true",
 		help="Check convergence for change in Q matrix")
 	parser_a.add_argument("-s", "--seed", type=int, default=0,
-		help="Random seed")
+		help="Random seed (0)")
 	parser_a.add_argument("-o", "--out", default="haplonet.admix",
-		help="Output path/name")
+		help="Output path/name ('haplonet.admix')")
 	parser_a.add_argument("--tole", type=float, default=0.1,
-		help="Difference in loglike between args.check iterations")
+		help="Difference in loglike between args.check iterations (0.1)")
 	parser_a.add_argument("--tole_q", type=float, default=1e-6,
-		help="Tolerance for convergence of Q matrix")
+		help="Tolerance for convergence of Q matrix (1e-6)")
 	parser_a.add_argument("--no_accel", action="store_true",
 		help="Turn off SqS3 acceleration")
 
@@ -93,17 +93,17 @@ def main():
 	parser_p.add_argument("-l", "--like",
 		help="Path to single log-likelihood file")
 	parser_p.add_argument("-F", "--filter", type=float, default=1e-3,
-		help="Threshold for haplotype cluster frequency")
+		help="Threshold for haplotype cluster frequency (1e-3)")
 	parser_p.add_argument("-e", "--n_eig", type=int, default=10,
-		help="Number of eigenvectors to extract")
+		help="Number of eigenvectors to extract (10)")
 	parser_p.add_argument("-c", "--cov", action="store_true",
 		help="Estimate covariance matrix instead of SVD")
 	parser_p.add_argument("-t", "--threads", type=int, default=1,
-		help="Number of threads")
+		help="Number of threads (1)")
 	parser_p.add_argument("-o", "--out", default="haplonet.pca",
-		help="Output path/name")
+		help="Output path/name ('haplonet.pca')")
 	parser_p.add_argument("--dosage", action="store_true",
-		help="Perform dosage SVD") 
+		help="Perform dosage SVD")
 	parser_p.add_argument("--iterative", type=int,
 		help="Use iterative probabilistic approach")
 	parser_p.add_argument("--freqs", action="store_true",
@@ -123,8 +123,6 @@ def main():
 		help="Only save median base positions, no .npy output")
 	parser_c.add_argument("-o", "--out", default="input",
 		help="Output filepath")
-	parser_c.add_argument("--unphased", action="store_true",
-		help="(PROTOTYPE) Toggle for unphased genotype data")
 
 	# Parse arguments
 	args = parser.parse_args()

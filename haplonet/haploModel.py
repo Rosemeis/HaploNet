@@ -10,15 +10,29 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-##### HaploNet ######
-class HaploNet(nn.Module):
-	def __init__(self, x_dim, h_dim, z_dim, y_dim, temp):
-		super(HaploNet, self).__init__()
+##### HaploNet - GMVAE ######
+class GMVAENet(nn.Module):
+	def __init__(self, x_dim, h_dim, z_dim, y_dim, deep, temp):
+		super(GMVAENet, self).__init__()
 		self.x_dim = x_dim
 		self.h_dim = h_dim
 		self.z_dim = z_dim
 		self.y_dim = y_dim
+		self.deep = deep
 		self.temp = temp
+
+		# Setup hidden layers
+		hidden_layers_enc = []
+		for layer in range(self.deep):
+			hidden_layers_enc.append(nn.Linear(h_dim, h_dim, bias=False))
+			hidden_layers_enc.append(nn.ReLU())
+			hidden_layers_enc.append(nn.BatchNorm1d(h_dim))
+
+		hidden_layers_dec = []
+		for layer in range(self.deep):
+			hidden_layers_dec.append(nn.Linear(h_dim, h_dim, bias=False))
+			hidden_layers_dec.append(nn.ReLU())
+			hidden_layers_dec.append(nn.BatchNorm1d(h_dim))
 
 		# Classification - q(y | x)
 		self.classify = nn.Sequential(
@@ -32,7 +46,8 @@ class HaploNet(nn.Module):
 		self.encoder = nn.Sequential(
 			nn.Linear(x_dim + y_dim, h_dim, bias=False),
 			nn.ReLU(),
-			nn.BatchNorm1d(h_dim)
+			nn.BatchNorm1d(h_dim),
+			*hidden_layers_enc
 		)
 		self.encoder_m = nn.Linear(h_dim, z_dim)
 		self.encoder_v = nn.Linear(h_dim, z_dim)
@@ -46,6 +61,7 @@ class HaploNet(nn.Module):
 			nn.Linear(z_dim, h_dim, bias=False),
 			nn.ReLU(),
 			nn.BatchNorm1d(h_dim),
+			*hidden_layers_dec,
 			nn.Linear(h_dim, x_dim)
 		)
 
@@ -83,21 +99,3 @@ class HaploNet(nn.Module):
 							self.decoder(self.prior_m(eye[i].repeat(\
 								x.size(0), 1))), x, reduction="none"), dim=1) \
 							for i in range(self.y_dim)], dim=1)
-
-	# Sample and reconstruct
-	def samplePrior(self, y, noise=False):
-		p_m = self.prior_m(y)
-		if noise:
-			p_v = self.prior_v(y)
-			z = self.reparameterize_gaussian(p_m, p_v)
-			return torch.sigmoid(self.decoder(z))
-		else:
-			return torch.sigmoid(self.decoder(p_m))
-
-	# Reconstruct input
-	def reconstructX(self, x):
-		y_logits = self.classify(x)
-		y = F.softmax(y_logits, dim=1)
-		e = self.encoder(torch.cat((x, y), dim=1))
-		z = self.encoder_m(e)
-		return torch.sigmoid(self.decoder(z))
