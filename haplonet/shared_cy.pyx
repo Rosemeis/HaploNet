@@ -243,7 +243,7 @@ cpdef covarianceY(signed char[:,::1] L, float[::1] F, float[:,::1] C, int t):
 				for s in range(S):
 					C[i, j] += (L[i, s] - 2*F[s])*(L[j, s] - 2*F[s])/ \
 								(2*F[s]*(1 - F[s]))
-				C[i, j] /= float(S)
+				C[i, j] /= <float>S
 				C[j, i] = C[i, j]
 
 # Iterative - Frequency
