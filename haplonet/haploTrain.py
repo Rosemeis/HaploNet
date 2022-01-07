@@ -44,7 +44,7 @@ def main(args, deaf):
 	del full, deaf
 
 	# Global variables
-	LOG2PI = 2*np.log(np.pi)
+	LOG2PI = np.log(2*np.pi)
 	LOGK = np.log(args.y_dim)
 	if args.threads is not None:
 		torch.set_num_threads(args.threads)
@@ -85,39 +85,48 @@ def main(args, deaf):
 			LOG2PI, dim=1)
 
 	# GMVAE loss - negative ELBO
-	def elbo(recon_x, x, z, z_m, z_v, p_m, p_v, y, beta):
-		rec_loss = torch.sum(F.binary_cross_entropy_with_logits(recon_x, x, reduction="none"), dim=1)
+	def elbo(recon_x, x, z, z_m, z_v, p_m, p_v, y):
+		rec_loss = F.binary_cross_entropy_with_logits(recon_x, x, reduction="sum")
 		gau_loss = log_normal(z, z_m, z_v) - log_normal(z, p_m, p_v)
 		cat_loss = torch.sum(y*torch.log(torch.clamp(y, min=1e-8)), dim=1) + LOGK
-		return torch.mean(rec_loss + gau_loss + beta*cat_loss)
+		return rec_loss, gau_loss.sum(), cat_loss.sum()
 
 
 	### Training steps
 	# Define training step
 	def train_epoch(train_loader, model, optimizer, beta, device):
-		train_loss = 0.0
+		tot_loss = 0.0
+		rec_loss = 0.0
+		gau_loss = 0.0
+		cat_loss = 0.0
 		for data in train_loader:
 			optimizer.zero_grad(set_to_none=True)
 			batch_x = data.to(device, non_blocking=True)
 			recon_x, z, z_m, z_v, p_m, p_v, y = model(batch_x)
-			loss = elbo(recon_x, batch_x, z, z_m, z_v, p_m, p_v, y, beta)
-			loss.backward()
+			rLoss, gLoss, cLoss = elbo(recon_x, batch_x, z, z_m, z_v, p_m, p_v, y)
+			tLoss = rLoss + gLoss + beta*cLoss
+			tLoss.backward()
 			optimizer.step()
-			train_loss += loss.item()
-		return train_loss/len(train_loader)
+			tot_loss += tLoss.item()
+			rec_loss += rLoss.item()
+			gau_loss += gLoss.item()
+			cat_loss += cLoss.item()
+		N = len(train_loader.dataset)
+		return tot_loss/N, rec_loss/N, gau_loss/N, cat_loss/N
 
 	# Define validation step
 	def valid_epoch(valid_loader, model, beta, device):
-		valid_loss = 0.0
+		val_loss = 0.0
 		model.eval()
 		with torch.no_grad():
 			for data in valid_loader:
 				batch_x = data.to(device, non_blocking=True)
 				recon_x, z, z_m, z_v, p_m, p_v, y = model(batch_x)
-				loss = elbo(recon_x, batch_x, z, z_m, z_v, p_m, p_v, y, beta)
-				valid_loss += loss.item()
+				rLoss, gLoss, cLoss = elbo(recon_x, batch_x, z, z_m, z_v, p_m, p_v, y)
+				tLoss = rLoss + gLoss + beta*cLoss
+				val_loss += tLoss.item()
 		model.train()
-		return valid_loss/len(valid_loader)
+		return val_loss/len(valid_loader.dataset)
 
 
 	### Construct containers
@@ -165,13 +174,13 @@ def main(args, deaf):
 
 		# Define model
 		model = haploModel.GMVAENet(segG.size(1), args.h_dim, args.z_dim, \
-										args.y_dim, args.deep, args.temp)
+										args.y_dim, args.depth, args.temp)
 		model.to(dev)
-		optimizer = torch.optim.AdamW(model.parameters(), lr=args.rate)
+		optimizer = torch.optim.Adam(model.parameters(), lr=args.rate)
 
 		# Run training (and validation)
 		for epoch in range(args.epochs):
-			tLoss = train_epoch(trainLoad, model, optimizer, args.beta, dev)
+			tLoss, rLoss, gLoss, cLoss = train_epoch(trainLoad, model, optimizer, args.beta, dev)
 			if args.split < 1.0:
 				vLoss = valid_epoch(validLoad, model, args.beta, dev)
 				if vLoss > patLoss:
@@ -186,7 +195,7 @@ def main(args, deaf):
 				if args.split < 1.0:
 					print("Epoch: {}, Train -ELBO: {:.4f}, Valid -ELBO: {:.4f}".format(epoch+1, tLoss, vLoss))
 				else:
-					print("Epoch: {}, Train -ELBO: {:.4f}".format(epoch+1, tLoss))
+					print("Epoch: {}, Train -ELBO: {:.4f}, Rec: {:.4f}, Gau: {:.4f}, Cat: {:.4f}".format(epoch+1, tLoss, rLoss, gLoss, cLoss))
 		print("Epoch: {}, Train -ELBO: {:.4f}".format(epoch+1, tLoss))
 		if args.split < 1.0:
 			print("Epoch: {}, Valid -ELBO: {:.4f}".format(epoch+1, vLoss))

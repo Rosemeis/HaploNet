@@ -12,24 +12,24 @@ import torch.nn.functional as F
 
 ##### HaploNet - GMVAE ######
 class GMVAENet(nn.Module):
-	def __init__(self, x_dim, h_dim, z_dim, y_dim, deep, temp):
+	def __init__(self, x_dim, h_dim, z_dim, y_dim, depth, temp):
 		super(GMVAENet, self).__init__()
 		self.x_dim = x_dim
 		self.h_dim = h_dim
 		self.z_dim = z_dim
 		self.y_dim = y_dim
-		self.deep = deep
+		self.depth = depth
 		self.temp = temp
 
 		# Setup hidden layers
 		hidden_layers_enc = []
-		for layer in range(self.deep):
+		for layer in range(self.depth):
 			hidden_layers_enc.append(nn.Linear(h_dim, h_dim, bias=False))
 			hidden_layers_enc.append(nn.ReLU())
 			hidden_layers_enc.append(nn.BatchNorm1d(h_dim))
 
 		hidden_layers_dec = []
-		for layer in range(self.deep):
+		for layer in range(self.depth):
 			hidden_layers_dec.append(nn.Linear(h_dim, h_dim, bias=False))
 			hidden_layers_dec.append(nn.ReLU())
 			hidden_layers_dec.append(nn.BatchNorm1d(h_dim))

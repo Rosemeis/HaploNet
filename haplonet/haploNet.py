@@ -31,7 +31,7 @@ def main():
 	parser_t.add_argument("-e", "--epochs", type=int, default=200,
 		help="Number of epochs (200)")
 	parser_t.add_argument("-r", "--rate", type=float, default=1e-3,
-		help="Learning rate for AdamW (1e-3)")
+		help="Learning rate for Adam (1e-3)")
 	parser_t.add_argument("-s", "--seed", type=int,
 		help="Set random seed")
 	parser_t.add_argument("-c", "--cuda", action="store_true",
@@ -44,14 +44,14 @@ def main():
 		help="Weight on categorical loss (1.0)")
 	parser_t.add_argument("--temp", type=float, default=0.1,
 		help="Temperature in Gumbel-Softmax (0.1)")
-	parser_t.add_argument("--deep", type=int, default=0,
+	parser_t.add_argument("--depth", type=int, default=0,
 		help="Number of extra hidden layers in GMVAE model (0)")
 	parser_t.add_argument("--latent", action="store_true",
 		help="Save latent space parameters")
 	parser_t.add_argument("--split", type=float, default=1.0,
 		help="Ratio of training/validation (1.0)")
-	parser_t.add_argument("--patience", type=int, default=9,
-		help="Patience for validation loss (9)")
+	parser_t.add_argument("--patience", type=int, default=11,
+		help="Patience for validation loss (11)")
 	parser_t.add_argument("--overlap", type=int, default=0,
 		help="Add overlapping SNPs to each end of a window (0)")
 	parser_t.add_argument("--save_models", action="store_true",
