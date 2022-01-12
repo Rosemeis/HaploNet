@@ -123,6 +123,8 @@ def main(args):
 			if abs(newLL - curLL) < args.tole:
 				print("EM algorithm converged.")
 				break
+			if i == args.iter:
+				print("EM algorithm did not converge!")
 			curLL = newLL
 
 	# Save Q and F

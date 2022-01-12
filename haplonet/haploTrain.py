@@ -193,7 +193,7 @@ def main(args, deaf):
 					pat = 0
 			if args.debug:
 				if args.split < 1.0:
-					print("Epoch: {}, Train -ELBO: {:.4f}, Valid -ELBO: {:.4f}".format(epoch+1, tLoss, vLoss))
+					print("Epoch: {}, Train -ELBO: {:.4f}, Valid -ELBO: {:.4f}, Rec: {:.4f}, Gau: {:.4f}, Cat: {:.4f}".format(epoch+1, tLoss, vLoss, rLoss, gLoss, cLoss))
 				else:
 					print("Epoch: {}, Train -ELBO: {:.4f}, Rec: {:.4f}, Gau: {:.4f}, Cat: {:.4f}".format(epoch+1, tLoss, rLoss, gLoss, cLoss))
 		print("Epoch: {}, Train -ELBO: {:.4f}".format(epoch+1, tLoss))
