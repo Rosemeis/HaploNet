@@ -13,7 +13,7 @@ def main():
 
 	### Commands
 	# haplonet train
-	parser_t = subparsers.add_parser('train')
+	parser_t = subparsers.add_parser("train")
 	parser_t.add_argument("-g", "--geno",
 		help="Genotype file in binary NumPy format")
 	parser_t.add_argument("-v", "--vcf",
@@ -60,7 +60,7 @@ def main():
 		help="Print losses")
 
 	# haplonet admix
-	parser_a = subparsers.add_parser('admix')
+	parser_a = subparsers.add_parser("admix")
 	parser_a.add_argument("-f", "--filelist",
 		help="Filelist with paths to multiple log-likelihood files")
 	parser_a.add_argument("-l", "--like",
@@ -87,7 +87,7 @@ def main():
 		help="Turn off SqS3 acceleration")
 
 	# haplonet pca
-	parser_p = subparsers.add_parser('pca')
+	parser_p = subparsers.add_parser("pca")
 	parser_p.add_argument("-f", "--filelist",
 		help="Filelist with paths to multiple log-likelihood files")
 	parser_p.add_argument("-l", "--like",
@@ -111,13 +111,36 @@ def main():
 	parser_p.add_argument("--loadings", action="store_true",
 		help="Save loadings of SVD")
 
+	# haplonet fatash
+	parser_f = subparsers.add_parser("fatash")
+	parser_f.add_argument("-f", "--filelist",
+		help="Filelist with paths to multiple log-likelihood files")
+	parser_f.add_argument("-l", "--like",
+		help="Path to single log-likelihood file")
+	parser_f.add_argument("-q", "--prop",
+		help="Path to estimated global ancestry proportions")
+	parser_f.add_argument("-p", "--freq",
+		help="Path to ancestral haplotype cluster frequencies")
+	parser_f.add_argument("-t", "--threads", type=int,
+		help="Number of threads (1)")
+	parser_f.add_argument("-o", "--out", default="haplonet.fatash",
+		help="Output path/name ('haplonet.fatash')")
+	parser_f.add_argument("--alpha", type=float, default=0.01,
+		help="Set initial alpha, rate of transition between states")
+	parser_f.add_argument("--alpha_optim", action="store_true",
+		help="Optimize individual alphas using SciPy")
+	parser_f.add_argument("--alpha_bound", nargs=2, type=float,
+		default=[0.0001, 0.01], help="Bounds on alpha")
+	parser_f.add_argument("--post", action="store_true",
+		help="Compute and save posterior probabilities")
+
 	# haplonet convert
-	parser_c = subparsers.add_parser('convert')
+	parser_c = subparsers.add_parser("convert")
 	parser_c.add_argument("-v", "--vcf",
 		help="Input vcf-file of genotypes")
-	parser_c.add_argument("-l", "--length", metavar="INT", type=int,
+	parser_c.add_argument("-l", "--length", type=int,
 		help="Generate median base positions for defined window lengths")
-	parser_c.add_argument("-c", "--chromosome", metavar="INT", type=int,
+	parser_c.add_argument("-c", "--chromosome", type=int,
 		help="Specify chromosome number to avoid ambiguity")
 	parser_c.add_argument("-w", "--windows", action="store_true",
 		help="Only save median base positions, no .npy output")
@@ -153,6 +176,13 @@ def main():
 		else:
 			from haplonet import pcaNN
 			pcaNN.main(args)
+	if sys.argv[1] == "fatash":
+		if len(sys.argv) < 3:
+			parser_f.print_help()
+			sys.exit()
+		else:
+			from haplonet import fatashHMM
+			fatashHMM.main(args)
 	if sys.argv[1] == "convert":
 		if len(sys.argv) < 3:
 			parser_c.print_help()
@@ -160,6 +190,7 @@ def main():
 		else:
 			from haplonet import convertVCF
 			convertVCF.main(args)
+
 
 ##### Define main #####
 if __name__ == "__main__":

@@ -2,7 +2,6 @@
 import numpy as np
 cimport numpy as np
 from cython.parallel import prange
-from cython import boundscheck, wraparound
 from libc.math cimport sqrt, log, exp
 
 ##### Cython functions for EM algorithm in HaploNet #####

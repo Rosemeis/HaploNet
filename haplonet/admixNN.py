@@ -28,8 +28,8 @@ def main(args):
 
 
 	##### HaploNet - EM #####
-	print("HaploNet - EM algorithm - K=" + str(args.K))
-	print("Estimating ancestry proportions and window-based haplotype frequencies.")
+	print("HaploNet - EM algorithm - K={} - seed={}".format(args.K, args.seed))
+	print("Estimating ancestry proportions and window-based haplotype frequencies.\n")
 
 	# Check input
 	assert (args.filelist is not None) or (args.like is not None), \
