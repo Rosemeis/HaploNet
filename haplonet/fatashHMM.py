@@ -23,7 +23,7 @@ def loglike_wrapper(param, *args):
 def main(args):
 	##### HaploNet - FATASH #####
 	print("HaploNet - FATASH")
-	print("Discrete HMM for inferring local ancestry tracts.")
+	print("Discrete HMM for inferring local ancestry tracts.\n")
 
 	# Check input
 	assert (args.filelist is not None) or (args.like is not None), \
@@ -75,6 +75,7 @@ def main(args):
 
 	# Run HMM for each individual
 	for i in range(N):
+		print("\rProcessing haplotype {}/{}".format(i, N), end="")
 		# Optimize alpha
 		if args.alpha_optim:
 			opt=optim.minimize_scalar(fun=loglike_wrapper,
@@ -92,6 +93,7 @@ def main(args):
 		if args.viterbi:
 			# Viterbi
 			lahmm_cy.viterbi(E, Q[i//2], V, T, i)
+	print(".")
 
 	# Save matrices
 	np.savetxt(args.out + ".path", np.argmax(P, axis=2).T, fmt="%i")
