@@ -63,9 +63,9 @@ def main(args):
 	alpha = args.alpha
 	E = np.zeros((W, N, K), dtype=np.float32) # Emission probabilities
 	T = np.zeros((K, K), dtype=np.float32) # Transition probabilities
-	V = np.zeros((W, N), dtype=np.int32) # Viterbi path
-	if args.post:
-		P = np.zeros((W, N, K), dtype=np.float32) # Posterior
+	P = np.zeros((W, N, K), dtype=np.float32) # Posterior
+	if args.viterbi:
+		V = np.zeros((W, N), dtype=np.int32) # Viterbi path
 	if args.alpha_save:
 		a = np.ones(N, dtype=np.float32)*alpha # Individual alpha values
 
@@ -84,27 +84,23 @@ def main(args):
 			alpha = opt.x
 			if args.alpha_save:
 				a[i] = alpha
-		else:
-			# Compute transitions
-			if i % 2 == 0:
-				lahmm_cy.calcTransition(T, Q[i//2], alpha)
+		# Compute transitions
+		lahmm_cy.calcTransition(T, Q[i//2], alpha)
 
-		# Compute posterior probabilities
-		if args.post:
-			# Forward-backward
-			lahmm_cy.fwdbwd(E, Q[i//2], P, T, i)
-
-		# Viterbi
-		lahmm_cy.viterbi(E, Q[i//2], V, T, i)
+		# Compute posterior probabilities (forward-backward)
+		lahmm_cy.fwdbwd(E, Q[i//2], P, T, i)
+		if args.viterbi:
+			# Viterbi
+			lahmm_cy.viterbi(E, Q[i//2], V, T, i)
 
 	# Save matrices
-	np.savetxt(args.out + ".path", V.T, fmt="%i")
-	print("Saved viterbi decoing path as " + args.out + ".path")
-	if args.post:
-		np.savetxt(args.out + ".post_path", np.argmax(P, axis=2).T, fmt="%i")
-		print("Saved posterior decoding path as " + args.out + ".post_path")
-		np.save(args.out + ".post_prob", P.astype(float))
-		print("Saved posterior probabilities as " + args.out + ".post_prob")
+	np.savetxt(args.out + ".path", np.argmax(P, axis=2).T, fmt="%i")
+	print("Saved posterior decoding path as " + args.out + ".path")
+	np.save(args.out + ".prob", P.astype(float))
+	print("Saved posterior probabilities as " + args.out + ".prob")
+	if args.viterbi:
+		np.savetxt(args.out + ".viterbi", V.T, fmt="%i")
+		print("Saved viterbi decoing path as " + args.out + ".viterbi")
 	if args.alpha_save:
 		np.savetxt(args.out + ".alpha", a, fmt="%.7f")
 		print("Saved individual alpha values as " + args.out + ".alpha")
