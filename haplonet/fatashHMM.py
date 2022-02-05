@@ -66,6 +66,8 @@ def main(args):
 	V = np.zeros((W, N), dtype=np.int32) # Viterbi path
 	if args.post:
 		P = np.zeros((W, N, K), dtype=np.float32) # Posterior
+	if args.alpha_save:
+		a = np.ones(N, dtype=np.float32)*alpha # Individual alpha values
 
 	# Compute emissions
 	lahmm_cy.calcEmission(L, F, E, args.threads)
@@ -80,6 +82,8 @@ def main(args):
 										method='bounded',
 										bounds=tuple(args.alpha_bound))
 			alpha = opt.x
+			if args.alpha_save:
+				a[i] = alpha
 		else:
 			# Compute transitions
 			if i % 2 == 0:
@@ -101,3 +105,6 @@ def main(args):
 		print("Saved posterior decoding path as " + args.out + ".post_path")
 		np.save(args.out + ".post_prob", P.astype(float))
 		print("Saved posterior probabilities as " + args.out + ".post_prob")
+	if args.alpha_save:
+		np.savetxt(args.out + ".alpha", a, fmt="%.7f")
+		print("Saved individual alpha values as " + args.out + ".alpha")
