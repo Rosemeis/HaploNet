@@ -8,9 +8,9 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 ##### Cython functions for FATASH #####
 # Safe log sum exp for array
 cdef double logsumexp(double* vec, int K):
-	cdef double max_v = -1e8
+	cdef double max_v = vec[0]
 	cdef double sum_v = 0.0
-	for k in range(K):
+	for k in range(1, K):
 		if vec[k] > max_v:
 			max_v = vec[k]
 	for k in range(K):
