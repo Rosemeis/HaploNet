@@ -6,9 +6,9 @@ from libc.math cimport log, exp
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
 ##### Cython functions for FATASH #####
-# Safe log sum for array
-cdef float sum_log(double* vec, int K):
-	cdef double max_v = 0.0
+# Safe log sum exp for array
+cdef double logsumexp(double* vec, int K):
+	cdef double max_v = -1e8
 	cdef double sum_v = 0.0
 	for k in range(K):
 		if vec[k] > max_v:
@@ -17,10 +17,6 @@ cdef float sum_log(double* vec, int K):
 		sum_v += exp(vec[k] - max_v)
 	return log(sum_v) + max_v
 
-# Safe log sum between two scalars
-cdef float sum_log_scalar(double v1, double v2):
-	cdef float max_v = max(v1, v2)
-	return log(exp(v1 - max_v) + exp(v2 - max_v)) + max_v
 
 # Argmax of array
 cdef int argmax(double* vec, int K):
@@ -29,6 +25,7 @@ cdef int argmax(double* vec, int K):
 		if vec[k] > vec[res]:
 			res = k
 	return res
+
 
 # Max of array
 cdef double maxarr(double* vec, int K):
@@ -52,10 +49,8 @@ cpdef calcEmission(float[:,:,::1] L, float[:,:,::1] F, float[:,:,::1] E, int t):
 			for i in range(N):
 				for k in range(K):
 					for c in range(C):
-						if L[w, i, c] < 1e-8 or F[w, k, c] < 1e-8:
-							continue
 						E[w, i, k] += L[w, i, c]*F[w, k, c]
-					E[w, i, k] = log(E[w, i, k])
+					E[w, i, k] = log(max(E[w, i, k], 1e-8))
 
 
 # Create transition matrix
@@ -79,13 +74,13 @@ cpdef double loglike(float[:,:,::1] E, float[::1] Qi, float[:,::1] T, int i):
 	cdef double* logP = <double*>PyMem_Malloc(sizeof(double)*K)
 	cdef double* logK = <double*>PyMem_Malloc(sizeof(double)*K)
 	for k in range(K):
-		logP[k] = E[0, i+0, k] + log(Qi[k])
+		logP[k] = E[0, i, k] + log(Qi[k])
 	for w in range(1, W):
 		for k1 in range(K):
 			for k2 in range(K):
 				logK[k2] = T[k1,k2] + logP[k2]
-			logP[k1] = sum_log(logK, K) + E[w, i, k1]
-	loglike = sum_log(logP, K)
+			logP[k1] = logsumexp(logK, K) + E[w, i, k1]
+	loglike = logsumexp(logP, K)
 
 	# Release memory
 	PyMem_Free(logP)
@@ -111,24 +106,26 @@ cpdef fwdbwd(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] P, float[:,::1] T, 
 		for k1 in range(K):
 			for k2 in range(K):
 				tmp_fwd[k2] = T[k1,k2] + res_fwd[(w-1)*K + k2]
-			res_fwd[w*K + k1] = sum_log(tmp_fwd, K) + E[w, i, k1]
+			res_fwd[w*K + k1] = logsumexp(tmp_fwd, K) + E[w, i, k1]
 
 	# Log-likelihood forward
-	ll_fwd = res_fwd[(W-1)*K + 0]
-	for k in range(1, K):
-		ll_fwd = sum_log_scalar(ll_fwd, res_fwd[(W-1)*K + k])
+	for k in range(K):
+		tmp_fwd[k] = res_fwd[(W-1)*K + k]
+	ll_fwd = logsumexp(tmp_fwd, K)
 
 	# Backward
+	for k in range(K):
+		res_bwd[(W-1)*K + k] = 0.0
 	for w in range(W-2, -1, -1):
 		for k1 in range(K):
 			for k2 in range(K):
 				tmp_bwd[k2] = T[k2,k1] + res_bwd[(w+1)*K + k2] + E[w+1, i, k2]
-			res_bwd[w*K + k1] = sum_log(tmp_bwd, K)
+			res_bwd[w*K + k1] = logsumexp(tmp_bwd, K)
 
 	# Log-likelihood backward
 	for k in range(K):
 		tmp_bwd[k] = res_bwd[0*K + k] + E[0, i, k] + log(Qi[k])
-	ll_bwd = sum_log(tmp_bwd, K)
+	ll_bwd = logsumexp(tmp_bwd, K)
 
 	# Check if log-likelihoods matches
 	assert abs(ll_fwd - ll_bwd)/ll_fwd < 1e-4

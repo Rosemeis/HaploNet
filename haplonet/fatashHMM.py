@@ -75,7 +75,11 @@ def main(args):
 
 	# Run HMM for each individual
 	for i in range(N):
-		print("\rProcessing haplotype {}/{}".format(i, N), end="")
+		print("\rProcessing haplotype {}/{}".format(i+1, N), end="")
+
+		# Compute transitions
+		lahmm_cy.calcTransition(T, Q[i//2], alpha)
+
 		# Optimize alpha
 		if args.alpha_optim:
 			opt=optim.minimize_scalar(fun=loglike_wrapper,
@@ -85,8 +89,6 @@ def main(args):
 			alpha = opt.x
 			if args.alpha_save:
 				a[i] = alpha
-		# Compute transitions
-		lahmm_cy.calcTransition(T, Q[i//2], alpha)
 
 		# Compute posterior probabilities (forward-backward)
 		lahmm_cy.fwdbwd(E, Q[i//2], P, T, i)
