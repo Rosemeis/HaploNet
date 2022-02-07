@@ -148,15 +148,12 @@ cpdef viterbi(float[:,:,::1] E, float[::1] Qi, int[:,::1] V, float[:,::1] T, int
 	cdef int K = E.shape[2]
 	cdef int w, k, k1, k2
 	cdef double* res_vit = <double*>PyMem_Malloc(sizeof(double)*W*K)
-	cdef double* log_vit = <double*>PyMem_Malloc(sizeof(double)*K)
 	cdef double* tmp_vit = <double*>PyMem_Malloc(sizeof(double)*K)
 	cdef int* arg_vit = <int*>PyMem_Malloc(sizeof(int)*W*K)
 
 	# Viterbi run
 	for k in range(K):
-		log_vit[k] = log(Qi[k])
-	for k in range(K):
-		res_vit[0*K + k] = maxarr(log_vit, K) + E[0, i, k]
+		res_vit[0*K + k] = log(Qi[k]) + E[0, i, k]
 	for w in range(1, W):
 		for k1 in range(K):
 			for k2 in range(K):
@@ -171,6 +168,5 @@ cpdef viterbi(float[:,:,::1] E, float[::1] Qi, int[:,::1] V, float[:,::1] T, int
 
 	# Free memory
 	PyMem_Free(res_vit)
-	PyMem_Free(log_vit)
 	PyMem_Free(tmp_vit)
 	PyMem_Free(arg_vit)
