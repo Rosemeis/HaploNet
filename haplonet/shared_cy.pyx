@@ -220,6 +220,7 @@ cpdef float rmse1d(float[::1] v1, float[::1] v2):
 	res = res/<float>N
 	return sqrt(res)
 
+
 ##### Cython functions for PCA in HaploNet #####
 # Standardize cluster matrix
 cpdef standardizeY(signed char[:,::1] L, float[::1] F, float[:,::1] Y, int t):
