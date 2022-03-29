@@ -92,6 +92,7 @@ def main(args):
 		# Filter out low frequency haplotype clusters
 		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
 		F = F[mask]
+		np.clip(F, 1e-6, (1.0 - 1e-6)) # Ensure non-zero values
 		Y = np.ascontiguousarray(Y[:, mask])
 
 		# Standardize dosage matrix
@@ -103,6 +104,7 @@ def main(args):
 		F /= float(N)
 		if args.freqs:
 			np.save(args.out + ".haplotype.freqs", F)
+		np.clip(F, 1e-6, (1.0 - 1e-6)) # Ensure non-zero values
 
 		# Construct data matrix
 		L = np.swapaxes(L, 0, 1)
