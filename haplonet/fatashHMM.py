@@ -35,10 +35,12 @@ def main(args):
 	print("Loading data.")
 	if args.filelist is not None:
 		L_list = []
+		F_list = [0]
 		with open(args.filelist) as f:
 			file_c = 1
 			for chr in f:
 				L_list.append(np.load(chr.strip("\n")))
+				F_list.append(L_list[-1].shape[0] + F_list[-1])
 				print("\rParsed file #" + str(file_c), end="")
 				file_c += 1
 			print(".")
@@ -63,9 +65,6 @@ def main(args):
 	alpha = args.alpha
 	E = np.zeros((W, N, K), dtype=np.float32) # Emission probabilities
 	T = np.zeros((K, K), dtype=np.float32) # Transition probabilities
-	P = np.zeros((W, N, K), dtype=np.float32) # Posterior
-	if args.viterbi:
-		V = np.zeros((W, N), dtype=np.int32) # Viterbi path
 	if args.alpha_save:
 		a = np.ones(N, dtype=np.float32)*alpha # Individual alpha values
 
@@ -73,38 +72,66 @@ def main(args):
 	lahmm_cy.calcEmission(L, F, E, args.threads)
 	del L, F
 
-	# Run HMM for each individual
-	for i in range(N):
-		print("\rProcessing haplotype {}/{}".format(i+1, N), end="")
-
-		# Compute transitions
-		lahmm_cy.calcTransition(T, Q[i//2], alpha)
-
-		# Optimize alpha
-		if args.alpha_optim:
-			opt=optim.minimize_scalar(fun=loglike_wrapper,
-										args=(E, Q[i//2], T, i),
-										method='bounded',
-										bounds=tuple(args.alpha_bound))
-			alpha = opt.x
-			if args.alpha_save:
-				a[i] = alpha
-
-		# Compute posterior probabilities (forward-backward)
-		lahmm_cy.fwdbwd(E, Q[i//2], P, T, i)
+	# Single or multiple chromosomes
+	if args.filelist is not None:
+		n_chr = len(F_list) - 1
+	else:
+		n_chr = 1
+	
+	# Run through each chromosome
+	for chr in range(n_chr):
+		print("Chromosome {}/{}".format(chr, n_chr))
+		if n_chr == 1:
+			F_list = [0, W]
+		P = np.zeros((F_list[chr+1] - F_list[chr], N, K), dtype=np.float32) # Posterior
 		if args.viterbi:
-			# Viterbi
-			lahmm_cy.viterbi(E, Q[i//2], V, T, i)
-	print(".")
+			V = np.zeros((F_list[chr+1] - F_list[chr], N), dtype=np.int32) # Viterbi path
 
-	# Save matrices
-	np.savetxt(args.out + ".path", np.argmax(P, axis=2).T, fmt="%i")
-	print("Saved posterior decoding path as " + args.out + ".path")
-	np.save(args.out + ".prob", P.astype(float))
-	print("Saved posterior probabilities as " + args.out + ".prob")
-	if args.viterbi:
-		np.savetxt(args.out + ".viterbi", V.T, fmt="%i")
-		print("Saved viterbi decoing path as " + args.out + ".viterbi")
-	if args.alpha_save:
-		np.savetxt(args.out + ".alpha", a, fmt="%.7f")
-		print("Saved individual alpha values as " + args.out + ".alpha")
+		# Run HMM for each individual
+		for i in range(N):
+			print("\rProcessing haplotype {}/{}".format(i+1, N), end="")
+
+			# Compute transitions
+			lahmm_cy.calcTransition(T, Q[i//2], alpha)
+
+			# Optimize alpha
+			if args.alpha_optim:
+				opt=optim.minimize_scalar(fun=loglike_wrapper,
+											args=(E[F_list[chr]:F_list[chr+1]], Q[i//2], T, i),
+											method='bounded',
+											bounds=tuple(args.alpha_bound))
+				alpha = opt.x
+				if args.alpha_save:
+					a[i] = alpha
+
+			# Compute posterior probabilities (forward-backward)
+			lahmm_cy.fwdbwd(E[F_list[chr]:F_list[chr+1]], Q[i//2], P, T, i)
+			if args.viterbi:
+				# Viterbi
+				lahmm_cy.viterbi(E[F_list[chr]:F_list[chr+1]], Q[i//2], V, T, i)
+		print(".")
+
+		# Save matrices
+		if n_chr == 1:
+			np.savetxt(args.out + ".path", np.argmax(P, axis=2).T, fmt="%i")
+			print("Saved posterior decoding path as " + args.out + ".path")
+			np.save(args.out + ".prob", P.astype(float))
+			print("Saved posterior probabilities as " + args.out + ".prob")
+			if args.viterbi:
+				np.savetxt(args.out + ".viterbi", V.T, fmt="%i")
+				print("Saved viterbi decoing path as " + args.out + ".viterbi")
+			if args.alpha_save:
+				np.savetxt(args.out + ".alpha", a, fmt="%.7f")
+				print("Saved individual alpha values as " + args.out + ".alpha")
+		else:
+			np.savetxt(args.out + ".chr{}.path".format(chr+1), np.argmax(P, axis=2).T, fmt="%i")
+			print("Saved posterior decoding path as " + args.out + ".path")
+			np.save(args.out + ".chr{}.prob".format(chr+1), P.astype(float))
+			print("Saved posterior probabilities as " + args.out + ".prob")
+			if args.viterbi:
+				np.savetxt(args.out + ".chr{}.viterbi".format(chr+1), V.T, fmt="%i")
+				print("Saved viterbi decoing path as " + args.out + ".viterbi")
+			if args.alpha_save:
+				np.savetxt(args.out + ".chr{}.alpha".format(chr+1), a, fmt="%.7f")
+				print("Saved individual alpha values as " + args.out + ".alpha")
+		del P, V	

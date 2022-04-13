@@ -125,12 +125,12 @@ def main():
 		help="Number of threads (1)")
 	parser_f.add_argument("-o", "--out", default="haplonet.fatash",
 		help="Output path/name ('haplonet.fatash')")
-	parser_f.add_argument("--alpha", type=float, default=0.1,
+	parser_f.add_argument("--alpha", type=float, default=0.01,
 		help="Set initial alpha, rate of transition between states")
 	parser_f.add_argument("--alpha_optim", action="store_true",
 		help="Optimize individual alphas using SciPy")
 	parser_f.add_argument("--alpha_bound", nargs=2, type=float,
-		default=[0.01, 1.00], help="Bounds on alpha")
+		default=[0.001, 0.1], help="Bounds on alpha")
 	parser_f.add_argument("--alpha_save", action="store_true",
 		help="Save individual alphas")
 	parser_f.add_argument("--viterbi", action="store_true",
