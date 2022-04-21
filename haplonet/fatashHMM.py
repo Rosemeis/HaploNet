@@ -80,7 +80,7 @@ def main(args):
 
 	# Run through each chromosome
 	for chr in range(n_chr):
-		print("Chromosome {}/{}".format(chr, n_chr))
+		print("Chromosome {}/{}".format(chr+1, n_chr))
 		if n_chr == 1:
 			F_list = [0, W]
 		P = np.zeros((F_list[chr+1] - F_list[chr], N, K), dtype=np.float32) # Posterior
