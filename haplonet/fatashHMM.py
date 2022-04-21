@@ -77,7 +77,7 @@ def main(args):
 		n_chr = len(F_list) - 1
 	else:
 		n_chr = 1
-	
+
 	# Run through each chromosome
 	for chr in range(n_chr):
 		print("Chromosome {}/{}".format(chr, n_chr))
@@ -134,4 +134,6 @@ def main(args):
 			if args.alpha_save:
 				np.savetxt(args.out + ".chr{}.alpha".format(chr+1), a, fmt="%.7f")
 				print("Saved individual alpha values as " + args.out + ".alpha")
-		del P, V	
+		del P
+		if args.viterbi:
+			del V
