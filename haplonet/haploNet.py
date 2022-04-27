@@ -141,11 +141,9 @@ def main():
 	parser_c.add_argument("-v", "--vcf",
 		help="Input vcf-file of genotypes")
 	parser_c.add_argument("-l", "--length", type=int,
-		help="Generate median base positions for defined window lengths")
-	parser_c.add_argument("-c", "--chromosome", type=int,
-		help="Specify chromosome number to avoid ambiguity")
+		help="Generate base positions for defined window length")
 	parser_c.add_argument("-w", "--windows", action="store_true",
-		help="Only save median base positions, no .npy output")
+		help="Only save base positions of defined window length, no .npy output")
 	parser_c.add_argument("-o", "--out", default="input",
 		help="Output filepath")
 

@@ -17,29 +17,25 @@ def main(args):
 	print("Loading VCF file and generating NumPy file.")
 	vcf = allel.read_vcf(args.vcf)
 
-	# Optional save for median window positions (base positions)
+	# Optional save for window positions (base positions)
 	if args.length is not None:
-		assert args.chromosome is not None, "Please specify chromosome number!"
-		print("Generating median window base positions.")
+		print("Generating start and end base positions for windows.")
 		S = vcf['variants/POS']
 		if (S.shape[0] % args.length) < args.length//2:
 			nSeg = S.shape[0]//args.length
 		else:
 			nSeg = ceil(S.shape[0]/args.length)
-		M = np.zeros((nSeg, 4), dtype=int)
+		M = np.empty((nSeg, 3), dtype=object)
+		M[:,0] = vcf['variants/CHROM'] 
 		for i in range(nSeg):
 			if i == (nSeg-1):
-				M[i,0] = args.chromosome
 				M[i,1] = S[i*args.length]
-				M[i,2] = ceil(np.median(S[(i*args.length):]))
-				M[i,3] = S[-1]
+				M[i,2] = S[-1]
 			else:
-				M[i,0] = args.chromosome
 				M[i,1] = S[i*args.length]
-				M[i,2] = ceil(np.median(S[(i*args.length):((i+1)*args.length)]))
-				M[i,3] = S[(i+1)*args.length]
-		np.savetxt(args.out + ".median.txt", M, delimiter="\t", fmt="%.d")
-		print("Saved median window base postions as " + args.out + ".median.txt")
+				M[i,2] = S[(i+1)*args.length]
+		np.savetxt(args.out + ".positions.txt", M, delimiter="\t", fmt="%s")
+		print("Saved window base postions as " + args.out + ".positions.txt")
 
 	# Save .npy file in np.int8
 	if not args.windows:
