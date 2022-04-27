@@ -95,7 +95,7 @@ def main(args):
 			lahmm_cy.calcTransition(T, Q[i//2], alpha)
 
 			# Optimize alpha
-			if args.alpha_optim:
+			if not args.no_optim:
 				opt=optim.minimize_scalar(fun=loglike_wrapper,
 											args=(E[F_list[chr]:F_list[chr+1]], Q[i//2], T, i),
 											method='bounded',
