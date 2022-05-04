@@ -26,7 +26,7 @@ def main(args):
 		else:
 			nSeg = ceil(S.shape[0]/args.length)
 		M = np.empty((nSeg, 3), dtype=object)
-		M[:,0] = vcf['variants/CHROM'] 
+		M[:,0] = vcf['variants/CHROM'][0]
 		for i in range(nSeg):
 			if i == (nSeg-1):
 				M[i,1] = S[i*args.length]
