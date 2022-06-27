@@ -18,6 +18,8 @@ def main():
 		help="Genotype file in binary NumPy format")
 	parser_t.add_argument("-v", "--vcf",
 		help="Genotype file in VCF format")
+	parser_t.add_argument("-w", "--windows",
+		help="Use provided window splitting points")
 	parser_t.add_argument("-x", "--x_dim", type=int, default=1024,
 		help="Dimension of input data - window size (1024)")
 	parser_t.add_argument("-i", "--h_dim", type=int, default=256,
@@ -52,8 +54,6 @@ def main():
 		help="Ratio of training/validation (1.0)")
 	parser_t.add_argument("--patience", type=int, default=11,
 		help="Patience for validation loss (11)")
-	parser_t.add_argument("--overlap", type=int, default=0,
-		help="Add overlapping SNPs to each end of a window (0)")
 	parser_t.add_argument("--save_models", action="store_true",
 		help="Save models")
 	parser_t.add_argument("--debug", action="store_true",

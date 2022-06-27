@@ -1,6 +1,6 @@
 """
 HaploNet.
-Model definition of Gaussian Mixture Variational Autoencoder using PyTorch.
+Model definitions of Variational Autoencoder frameworks using PyTorch.
 """
 
 __author__ = "Jonas Meisner"
