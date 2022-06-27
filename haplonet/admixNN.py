@@ -122,6 +122,7 @@ def main(args):
 			print("({}) Log-likelihood: {}".format(i, np.round(newLL, 5)), flush=True)
 			if abs(newLL - curLL) < args.tole:
 				print("EM algorithm converged.")
+				print("Final log-likelihood: {}".format(np.round(newLL, 5)), flush=True)
 				break
 			if i == args.iter:
 				print("EM algorithm did not converge!")
