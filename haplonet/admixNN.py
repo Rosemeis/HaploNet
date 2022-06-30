@@ -114,8 +114,7 @@ def main(args):
 			# Update matrices and map to domain
 			shared_cy.accelUpdateF(F, F0, diffF_1, diffF_3, alpha_F, args.threads)
 			shared_cy.accelUpdateQ(Q, Q0, diffQ_1, diffQ_3, alpha_Q, args.threads)
-		else:
-			emStep(L, F, Q, Fnew, Qnew, args.threads)
+		emStep(L, F, Q, Fnew, Qnew, args.threads) # Stabilization step
 		if i % args.check == 0:
 			shared_cy.logLike(L, F, Q, logVec, args.threads)
 			newLL = np.sum(logVec, dtype=float)
