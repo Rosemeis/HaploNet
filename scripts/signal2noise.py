@@ -18,8 +18,8 @@ L = L[O]
 B = 0.0
 W = 0.0
 for k in range(K):
-	b_k = admixtureDist.betweenDist(F, L, k)
-	w_k = admixtureDist.withinDist(F, L, k)
+	b_k = signal2noise.betweenDist(F, L, k)
+	w_k = signal2noise.withinDist(F, L, k)
 	B += b_k
 	W += w_k
 
