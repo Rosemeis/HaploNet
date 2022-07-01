@@ -92,8 +92,8 @@ def main():
 		help="Filelist with paths to multiple log-likelihood files")
 	parser_p.add_argument("-l", "--like",
 		help="Path to single log-likelihood file")
-	parser_p.add_argument("-F", "--filter", type=float, default=1e-3,
-		help="Threshold for haplotype cluster frequency (1e-3)")
+	parser_p.add_argument("-F", "--filter", type=float, default=1e-6,
+		help="Threshold for haplotype cluster frequency (1e-6)")
 	parser_p.add_argument("-e", "--n_eig", type=int, default=10,
 		help="Number of eigenvectors to extract (10)")
 	parser_p.add_argument("-c", "--cov", action="store_true",
