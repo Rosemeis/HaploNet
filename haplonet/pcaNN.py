@@ -6,7 +6,6 @@ Perform PCA using neural network likelihoods.
 __author__ = "Jonas Meisner"
 
 # Libraries
-import argparse
 import numpy as np
 from scipy.sparse.linalg import svds
 from haplonet import shared_cy

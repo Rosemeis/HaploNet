@@ -6,7 +6,6 @@ EM algorithm for estimating ancestry proportions and haplotype frequencies.
 __author__ = "Jonas Meisner"
 
 # Libraries
-import argparse
 import numpy as np
 from haplonet import shared_cy
 

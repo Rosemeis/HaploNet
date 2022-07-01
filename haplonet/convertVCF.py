@@ -8,7 +8,6 @@ __author__ = "Jonas Meisner"
 # Libraries
 import numpy as np
 import allel
-import argparse
 from math import ceil
 
 # Main function

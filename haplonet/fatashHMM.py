@@ -6,7 +6,6 @@ HMM for inferring local ancestry tracts.
 __author__ = "Jonas Meisner and Kristian Hanghoej"
 
 # Libraries
-import argparse
 import numpy as np
 import scipy.optimize as optim
 from haplonet import lahmm_cy
