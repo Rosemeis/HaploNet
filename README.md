@@ -2,7 +2,8 @@
 HaploNet is a framework for inferring haplotype and population structure using neural networks in an unsupervised approach for phased haplotypes of whole-genome sequencing (WGS) data. We utilize a variational autoencoder (VAE) framework to learn mappings to and from a low-dimensional latent space in which we will perform indirect clustering of haplotypes with a Gaussian mixture prior (Gaussian Mixture Variational Autoencoder).
 
 ### Citation
-Preprint: [Haplotype and Population Structure Inference using Neural Networks in Whole-Genome Sequencing Data](https://doi.org/10.1101/2020.12.28.424587).
+Please cite our paper in *Genome Research*:
+[Haplotype and Population Structure Inference using Neural Networks in Whole-Genome Sequencing Data](https://doi.org/10.1101/gr.276813.122).
 
 ### Dependencies
 The HaploNet framework relies on the following Python packages that you can install through conda (recommended) or pip:
