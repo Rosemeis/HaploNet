@@ -54,6 +54,8 @@ def main():
 		help="Ratio of training/validation (1.0)")
 	parser_t.add_argument("--patience", type=int, default=11,
 		help="Patience for validation loss (11)")
+	parser_t.add_argument("--subsplit", type=int, default=0,
+		help="Subsplit log-likelihoods into smaller windows")
 	parser_t.add_argument("--save_models", action="store_true",
 		help="Save models")
 	parser_t.add_argument("--debug", action="store_true",

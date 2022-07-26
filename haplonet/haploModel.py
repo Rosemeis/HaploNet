@@ -85,7 +85,7 @@ class GMVAENet(nn.Module):
 		z_v = self.encoder_v(e)
 		z = self.reparameterize_gaussian(z_m, z_v)
 		return self.decoder(z), z, z_m, z_v, p_m, p_v, \
-				F.softmax(y_logits, dim=1)
+			F.softmax(y_logits, dim=1)
 
 	# Generate mu and y
 	def generateLatent(self, x):
@@ -93,9 +93,22 @@ class GMVAENet(nn.Module):
 		e = self.encoder(torch.cat((x, y), dim=1))
 		return self.encoder_m(e), self.encoder_v(e), y
 
-	# Generate likelihoods - p(x | y) \propto p(x | p_m(y))
+	# Generate likelihoods - log p(x | y) \propto log p(x | p_m(y))
 	def generateLikelihoods(self, x, eye):
-		return torch.stack([-torch.sum(F.binary_cross_entropy_with_logits( \
-							self.decoder(self.prior_m(eye[i].repeat(\
-								x.size(0), 1))), x, reduction="none"), dim=1) \
-							for i in range(self.y_dim)], dim=1)
+		return torch.stack([-torch.sum(F.binary_cross_entropy_with_logits(\
+			self.decoder(self.prior_m(eye[i].repeat(\
+				x.size(0), 1))), x, reduction="none"), dim=1) \
+					for i in range(self.y_dim)], dim=1)
+
+	# Generate subsplit log-likelihoods
+	def subsplitLikelihoods(self, x, eye, sub):
+		splits = []
+		for split in range(sub):
+			splits.append(split*(self.x_dim//sub))
+		splits.append(self.x_dim)
+		l = torch.stack([F.binary_cross_entropy_with_logits(\
+			self.decoder(self.prior_m(eye[i].repeat(\
+				x.size(0), 1))), x, reduction="none") \
+					for i in range(self.y_dim)], dim=2)
+		return torch.stack([-torch.sum(l[:,splits[s]:splits[s+1],:], dim=1) \
+			for s in range(sub)], dim=0)

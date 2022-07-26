@@ -26,14 +26,14 @@ LOG2PI = log(2*pi)
 # Log-normal pdf for monte carlo samples
 def log_normal(z, mu, logvar):
 	return -0.5*torch.sum(torch.pow(z - mu, 2)*torch.exp(-logvar) + logvar + \
-			LOG2PI, dim=1)
+		LOG2PI, dim=1)
 
 # GMVAE loss - negative ELBO
 def elbo(recon_x, x, z, z_m, z_v, p_m, p_v, y):
 	rec_loss = F.binary_cross_entropy_with_logits(recon_x, x, reduction="sum")
 	gau_loss = log_normal(z, z_m, z_v) - log_normal(z, p_m, p_v)
 	cat_loss = torch.sum(y*torch.log(torch.clamp(y, min=1e-8)), dim=1) + \
-				log(y.size(1))
+		log(y.size(1))
 	return rec_loss, gau_loss.sum(), cat_loss.sum()
 
 
@@ -78,7 +78,7 @@ def valid(loader, model, beta, device):
 ##### Main function #####
 def main(args, deaf):
 	### HaploNet
-	print("HaploNet v0.3")
+	print("HaploNet v0.31")
 	print("Gaussian Mixture Variational Autoencoder.")
 	assert (args.geno is not None) or (args.vcf is not None), \
 			"No input data (--geno or --vcf)!"
@@ -86,7 +86,7 @@ def main(args, deaf):
 	# Create log-file of arguments
 	full = vars(args)
 	with open(args.out + ".args", "w") as f:
-		f.write("HaploNet v0.3\n")
+		f.write("HaploNet v0.31\n")
 		f.write("haplonet train\n")
 		f.write("Time: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "\n")
 		f.write("Directory: " + str(os.getcwd()) + "\n")
@@ -152,6 +152,8 @@ def main(args, deaf):
 		Y = torch.empty((nSeg, n, args.y_dim)) # Components
 		Z = torch.empty((nSeg, n, args.z_dim)) # Means
 		V = torch.empty((nSeg, n, args.z_dim)) # Logvars
+	if args.subsplit > 0:
+		Ls = torch.empty((nSeg*args.subsplit, n, args.y_dim)) # Subsplit into smaller windows
 
 
 	### Training
@@ -168,19 +170,19 @@ def main(args, deaf):
 			nTrain = permVec[:int(n*args.split)]
 			nValid = permVec[int(n*args.split):]
 			trainLoad = DataLoader(segG[nTrain], batch_size=args.batch, \
-									shuffle=True, pin_memory=True)
+				shuffle=True, pin_memory=True)
 			validLoad = DataLoader(segG[nValid], batch_size=args.batch, \
-									pin_memory=True)
+				pin_memory=True)
 			patLoss = float("Inf")
 			pat = 0
 		else:
 			# Training set
 			trainLoad = DataLoader(segG, batch_size=args.batch, shuffle=True, \
-									pin_memory=True)
+				pin_memory=True)
 
 		# Define model
 		model = haploModel.GMVAENet(segG.size(1), args.h_dim, args.z_dim, \
-										args.y_dim, args.depth, args.temp)
+			args.y_dim, args.depth, args.temp)
 		model.to(dev)
 		optimizer = torch.optim.Adam(model.parameters(), lr=args.rate)
 
@@ -199,27 +201,41 @@ def main(args, deaf):
 					pat = 0
 			if args.debug:
 				if args.split < 1.0:
-					print("Epoch: {}, Train -ELBO: {:.4f}, Valid -ELBO: {:.4f}, Rec: {:.4f}, Gau: {:.4f}, Cat: {:.4f}".format(epoch+1, tLoss, vLoss, rLoss, gLoss, cLoss))
+					print("Epoch: {}, Train -ELBO: {:.4f}, Valid -ELBO: {:.4f}, Rec: {:.4f}, \
+						Gau: {:.4f}, Cat: {:.4f}".format(epoch+1, tLoss, vLoss, rLoss, gLoss, cLoss))
 				else:
-					print("Epoch: {}, Train -ELBO: {:.4f}, Rec: {:.4f}, Gau: {:.4f}, Cat: {:.4f}".format(epoch+1, tLoss, rLoss, gLoss, cLoss))
+					print("Epoch: {}, Train -ELBO: {:.4f}, Rec: {:.4f}, Gau: {:.4f}, \
+						Cat: {:.4f}".format(epoch+1, tLoss, rLoss, gLoss, cLoss))
 		print("Epoch: {}, Train -ELBO: {:.4f}".format(epoch+1, tLoss))
 		if args.split < 1.0:
 			print("Epoch: {}, Valid -ELBO: {:.4f}".format(epoch+1, vLoss))
 		print("Time elapsed: {:.4f}\n".format(time()-st))
 
-		# Generate likelihoods and optionally save latent spaces and model
+		# Generate log-likelihoods and optionally save latent spaces and model
 		model.eval()
 		batch_n = ceil(n/args.batch)
 		saveLoad = DataLoader(segG, batch_size=args.batch, pin_memory=True)
 		with torch.no_grad():
 			for it, data in enumerate(saveLoad):
-				# Generate likelihoods
+				# Generate log-likelihoods
 				batch_x = data.to(dev, non_blocking=True)
 				batch_l = model.generateLikelihoods(batch_x, Y_eye)
 				if it == (batch_n - 1):
 					L[i,it*args.batch:,:] = batch_l.to(torch.device("cpu")).detach()
 				else:
-					L[i,it*args.batch:(it+1)*args.batch,:] = batch_l.to(torch.device("cpu")).detach()
+					L[i,it*args.batch:(it+1)*args.batch,:] = batch_l.to(\
+						torch.device("cpu")).detach()
+				# Subsplit log-likelihoods
+				if args.subsplit > 0:
+					batch_ls = model.subsplitLikelihoods(batch_x, Y_eye, args.subsplit)
+					for sub in range(args.subsplit):
+						if it == (batch_n - 1):
+							Ls[args.subsplit*i + sub, \
+								it*args.batch:,:] = batch_ls[sub].to(torch.device("cpu")).detach()
+						else:
+							Ls[args.subsplit*i + sub, \
+								it*args.batch:(it+1)*args.batch,:] = batch_ls[sub].to(\
+									torch.device("cpu")).detach()
 
 				# Generate latent spaces
 				if args.latent:
@@ -229,9 +245,12 @@ def main(args, deaf):
 						Z[i,it*args.batch:,:] = batch_z.to(torch.device("cpu")).detach()
 						V[i,it*args.batch:,:] = batch_v.to(torch.device("cpu")).detach()
 					else:
-						Y[i,it*args.batch:(it+1)*args.batch,:] = batch_y.to(torch.device("cpu")).detach()
-						Z[i,it*args.batch:(it+1)*args.batch,:] = batch_z.to(torch.device("cpu")).detach()
-						V[i,it*args.batch:(it+1)*args.batch,:] = batch_v.to(torch.device("cpu")).detach()
+						Y[i,it*args.batch:(it+1)*args.batch,:] = batch_y.to(\
+							torch.device("cpu")).detach()
+						Z[i,it*args.batch:(it+1)*args.batch,:] = batch_z.to(\
+							torch.device("cpu")).detach()
+						V[i,it*args.batch:(it+1)*args.batch,:] = batch_v.to(\
+							torch.device("cpu")).detach()
 		if args.save_models:
 			model.to(torch.device("cpu"))
 			torch.save(model.state_dict(), args.out + "/models/seg" + str(i) + ".pt")
@@ -248,6 +267,9 @@ def main(args, deaf):
 		np.save(args.out + ".z", Z.numpy())
 		np.save(args.out + ".v", V.numpy())
 		print("Saved Gaussian parameters as " + args.out + ".{z,v}.npy")
+	if args.subsplit > 0:
+		np.save(args.out + ".split.loglike", Ls.numpy())
+		print("Saved subsplit log-likelihoods as " + args.out + ".split.loglike.npy")
 	print("\n")
 
 
