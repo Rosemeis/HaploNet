@@ -112,3 +112,13 @@ class GMVAENet(nn.Module):
 					for i in range(self.y_dim)], dim=2)
 		return torch.stack([-torch.sum(l[:,splits[s]:splits[s+1],:], dim=1) \
 			for s in range(sub)], dim=0)
+	
+	# Simulate window segment
+	def simulate(self, y, noise=True):
+		if noise: # Include sampling noise
+			p_m = self.prior_m(y)
+			p_v = self.prior_v(y)
+			z = self.reparameterize_gaussian(p_m, p_v)
+		else:
+			z = self.prior_m(y)
+		return torch.sigmoid(self.decoder(z))

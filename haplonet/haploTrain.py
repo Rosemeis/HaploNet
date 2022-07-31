@@ -78,7 +78,7 @@ def valid(loader, model, beta, device):
 ##### Main function #####
 def main(args, deaf):
 	### HaploNet
-	print("HaploNet v0.31")
+	print("HaploNet v0.4")
 	print("Gaussian Mixture Variational Autoencoder.")
 	assert (args.geno is not None) or (args.vcf is not None), \
 			"No input data (--geno or --vcf)!"
@@ -86,7 +86,7 @@ def main(args, deaf):
 	# Create log-file of arguments
 	full = vars(args)
 	with open(args.out + ".args", "w") as f:
-		f.write("HaploNet v0.31\n")
+		f.write("HaploNet v0.4\n")
 		f.write("haplonet train\n")
 		f.write("Time: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "\n")
 		f.write("Directory: " + str(os.getcwd()) + "\n")
@@ -152,8 +152,8 @@ def main(args, deaf):
 		Y = torch.empty((nSeg, n, args.y_dim)) # Components
 		Z = torch.empty((nSeg, n, args.z_dim)) # Means
 		V = torch.empty((nSeg, n, args.z_dim)) # Logvars
-	if args.subsplit > 0:
-		Ls = torch.empty((nSeg*args.subsplit, n, args.y_dim)) # Subsplit into smaller windows
+	if args.subsplit > 0: # Subsplit into smaller windows
+		Ls = torch.empty((nSeg*args.subsplit, n, args.y_dim))
 
 
 	### Training

@@ -149,6 +149,23 @@ def main():
 	parser_c.add_argument("-o", "--out", default="input",
 		help="Output filepath")
 
+	# haplonet simulate
+	parser_s = subparsers.add_parser("simulate")
+	parser_s.add_argument("-c", "--clusters",
+		help="Haplotype cluster probabilities")
+	parser_s.add_argument("-m", "--models",
+		help="Path to folder with HaploNet models")
+	parser_s.add_argument("-n", "--n_sim", type=int, default=1,
+		help="Number of individuals to simulate for each probabilty vector")
+	parser_s.add_argument("-o", "--out", default="haplonet.simulate",
+		help="Output path/name ('haplonet.simulate')")
+	parser_s.add_argument("--subsplit", type=int, default=0,
+		help="Subsplit log-likelihoods into smaller windows")
+	parser_s.add_argument("--temp", type=float, default=0.1,
+		help="Temperature in Gumbel-Softmax (0.1)")
+	parser_s.add_argument("--depth", type=int, default=0,
+		help="Number of extra hidden layers in GMVAE model (0)")
+
 	# Parse arguments
 	args = parser.parse_args()
 	if len(sys.argv) < 2:
@@ -192,6 +209,13 @@ def main():
 		else:
 			from haplonet import convertVCF
 			convertVCF.main(args)
+	if sys.argv[1] == "simulate":
+		if len(sys.argv) < 3:
+			parser_s.print_help()
+			sys.exit()
+		else:
+			from haplonet import haploSim
+			haploSim.main(args)
 
 
 ##### Define main #####
