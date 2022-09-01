@@ -22,7 +22,7 @@ cpdef createLikes(float[:,:,::1] L, int t):
 						tmpMax = L[w, i, c]
 				for c in range(C):
 					L[w, i, c] = L[w, i, c] - tmpMax
-					L[w, i, c] = exp(L[w, i, c])
+					L[w, i, c] = max(1e-7, exp(L[w, i, c]))
 					tmpSum = tmpSum + L[w, i, c]
 				for c in range(C):
 					L[w, i, c] = L[w, i, c]/tmpSum
