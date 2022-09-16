@@ -25,19 +25,19 @@ class GMVAENet(nn.Module):
 		hidden_layers_enc = []
 		for layer in range(self.depth):
 			hidden_layers_enc.append(nn.Linear(h_dim, h_dim, bias=False))
-			hidden_layers_enc.append(nn.ReLU())
+			hidden_layers_enc.append(nn.GELU())
 			hidden_layers_enc.append(nn.BatchNorm1d(h_dim))
 
 		hidden_layers_dec = []
 		for layer in range(self.depth):
 			hidden_layers_dec.append(nn.Linear(h_dim, h_dim, bias=False))
-			hidden_layers_dec.append(nn.ReLU())
+			hidden_layers_dec.append(nn.GELU())
 			hidden_layers_dec.append(nn.BatchNorm1d(h_dim))
 
 		# Classification - q(y | x)
 		self.classify = nn.Sequential(
 			nn.Linear(x_dim, h_dim, bias=False),
-			nn.ReLU(),
+			nn.GELU(),
 			nn.BatchNorm1d(h_dim),
 			nn.Linear(h_dim, y_dim)
 		)
@@ -45,7 +45,7 @@ class GMVAENet(nn.Module):
 		# Encoder - q(z | x, y)
 		self.encoder = nn.Sequential(
 			nn.Linear(x_dim + y_dim, h_dim, bias=False),
-			nn.ReLU(),
+			nn.GELU(),
 			nn.BatchNorm1d(h_dim),
 			*hidden_layers_enc
 		)
@@ -59,7 +59,7 @@ class GMVAENet(nn.Module):
 		# Decoder - p(x | z)
 		self.decoder = nn.Sequential(
 			nn.Linear(z_dim, h_dim, bias=False),
-			nn.ReLU(),
+			nn.GELU(),
 			nn.BatchNorm1d(h_dim),
 			*hidden_layers_dec,
 			nn.Linear(h_dim, x_dim)
