@@ -62,7 +62,7 @@ cpdef calcTransition(float[:,::1] T, float[::1] Qi, float a):
 			if i == j:
 				T[i,j] = log((1.0 - exp(-a))*Qi[i] + exp(-a))
 			else:
-				T[i,j] = log((1.0 - exp(-a))*Qi[j])
+				T[i,j] = log((1.0 - exp(-a))*Qi[i])
 
 
 # Log-likelihood function
