@@ -124,15 +124,15 @@ def main(args):
 				print("Saved individual alpha values as " + args.out + ".alpha")
 		else:
 			np.savetxt(args.out + ".chr{}.path".format(chr+1), np.argmax(P, axis=2).T, fmt="%i")
-			print("Saved posterior decoding path as " + args.out + ".path")
+			print("Saved posterior decoding path as " + args.out + ".chr{}.path".format(chr+1))
 			np.save(args.out + ".chr{}.prob".format(chr+1), P.astype(float))
-			print("Saved posterior probabilities as " + args.out + ".prob")
+			print("Saved posterior probabilities as " + args.out + ".chr{}.prob".format(chr+1))
 			if args.viterbi:
 				np.savetxt(args.out + ".chr{}.viterbi".format(chr+1), V.T, fmt="%i")
-				print("Saved viterbi decoing path as " + args.out + ".viterbi")
+				print("Saved viterbi decoing path as " + args.out + ".chr{}.viterbi".format(chr+1))
 			if args.alpha_save:
 				np.savetxt(args.out + ".chr{}.alpha".format(chr+1), a, fmt="%.7f")
-				print("Saved individual alpha values as " + args.out + ".alpha")
+				print("Saved individual alpha values as " + args.out + ".chr{}.alpha".format(chr+1))
 		del P
 		if args.viterbi:
 			del V
