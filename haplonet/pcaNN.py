@@ -82,6 +82,8 @@ def main(args):
 			for i in range(100):
 				U, s, V = svds(Y, k=args.iterative)
 				shared_cy.generateP(L, F, H, Y, U, s, V, mask, args.threads)
+				print(H)
+				print(Y)
 				if i > 0:
 					diff = shared_cy.rmse2d(Y, Y_prev)
 					print("({}) Diff: {}".format(i, np.round(diff, 12)), flush=True)
