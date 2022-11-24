@@ -270,10 +270,8 @@ cpdef emFrequency(float[:,:,::1] L, float[::1] F, float[:,:,::1] H, int t):
 
 # Iterative - Center
 cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
-		unsigned char[::1] mask, int t):
+		unsigned char[::1] mask, int W, int C, int t):
 	cdef int N = L.shape[0]
-	cdef int W = L.shape[1]
-	cdef int C = L.shape[2]
 	cdef int i, w, c, m
 	cdef float sumC
 	with nogil:
@@ -292,16 +290,14 @@ cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 			for w in range(W):
 				for c in range(C):
 					if mask[w*C + c] == 1:
-						Y[i//2, m] = H[i+0, w*C + c] + H[i+1, w*C + c] - \
-						2*F[w*C + c]
+						Y[i//2, m] = H[i+0, w*C + c] + H[i+1, w*C + c] - 2*F[w*C + c]
 						m = m + 1
 
 # Iterative - PCAngsd
 cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
-		float[:,:] U, float[:] s, float[:,:] V, unsigned char[::1] mask, int t):
+		float[:,:] U, float[:] s, float[:,:] V, unsigned char[::1] mask, int W, \
+		int C, int t):
 	cdef int N = L.shape[0]
-	cdef int W = L.shape[1]
-	cdef int C = L.shape[2]
 	cdef int K = s.shape[0]
 	cdef int i, k, w, c, h, m1, m2
 	cdef float sumC, sumK
