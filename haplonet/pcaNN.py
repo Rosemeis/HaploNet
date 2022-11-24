@@ -76,12 +76,12 @@ def main(args):
 		Y = np.zeros((N//2, np.sum(mask, dtype=int)), dtype=np.float32) # Pi container
 
 		# Generate E
-		shared_cy.generateE(L, F, H, Y, mask, W, C, args.threads)
+		shared_cy.generateE(L, F, H, Y, mask, args.threads)
 		if args.iterative is not None:
 			print("Iterative estimation of haplotype cluster frequencies.")
 			for i in range(100):
 				U, s, V = svds(Y, k=args.iterative)
-				shared_cy.generateP(L, F, H, Y, U, s, V, mask, W, C, args.threads)
+				shared_cy.generateP(L, F, H, Y, U, s, V, mask, args.threads)
 				if i > 0:
 					diff = shared_cy.rmse2d(Y, Y_prev)
 					print("({}) Diff: {}".format(i, np.round(diff, 12)), flush=True)

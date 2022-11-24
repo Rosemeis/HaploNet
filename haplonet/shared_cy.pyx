@@ -270,8 +270,10 @@ cpdef emFrequency(float[:,:,::1] L, float[::1] F, float[:,:,::1] H, int t):
 
 # Iterative - Center
 cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
-		unsigned char[::1] mask, int W, int C, int t):
+		unsigned char[::1] mask, int t):
 	cdef int N = L.shape[0]
+	cdef int W = L.shape[1]
+	cdef int C = L.shape[2]
 	cdef int i, w, c, m
 	cdef float sumC
 	with nogil:
@@ -294,9 +296,10 @@ cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 
 # Iterative - PCAngsd
 cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
-		float[:,:] U, float[:] s, float[:,:] V, unsigned char[::1] mask, int W, \
-		int C, int t):
+		float[:,:] U, float[:] s, float[:,:] V, unsigned char[::1] mask, int t):
 	cdef int N = L.shape[0]
+	cdef int W = L.shape[1]
+	cdef int C = L.shape[2]
 	cdef int K = s.shape[0]
 	cdef int i, k, w, c, h, m1, m2
 	cdef float sumC, sumK
@@ -311,7 +314,7 @@ cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 						Y[i//2, m1+m2] = 0.0
 						for k in range(K):
 							Y[i//2, m1+m2] += U[i//2, k]*s[k]*V[k, m1+m2]
-						Y[i//2, m1+m2] = min(max(Y[i//2, m1+m2] + 2*F[w*C + c], \
+						Y[i//2, m1+m2] = min(max((Y[i//2, m1+m2] + 2*F[w*C + c])/2.0, \
 							1e-7), 1-(1e-7))
 						sumK = sumK + Y[i//2, m1+m2]
 						m2 = m2 + 1
