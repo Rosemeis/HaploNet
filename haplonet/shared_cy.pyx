@@ -300,13 +300,12 @@ cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 			for w in range(W):
 				sumK = 0.0
 				for c in range(C):
-					if mask[w*C + c] == 1:
-						Y[i//2, w*C + c] = 0.0
-						for k in range(K):
-							Y[i//2, w*C + c] += U[i//2, k]*s[k]*V[k, w*C + c]
-						Y[i//2, w*C + c] = (Y[i//2, w*C + c] + 2*F[w*C + c])/2.0
-						Y[i//2, w*C + c] = min(max(1e-7, Y[i//2, w*C + c]), 1-(1e-7))
-						sumK = sumK + Y[i//2, w*C + c]
+					Y[i//2, w*C + c] = 0.0
+					for k in range(K):
+						Y[i//2, w*C + c] += U[i//2, k]*s[k]*V[k, w*C + c]
+					Y[i//2, w*C + c] = (Y[i//2, w*C + c] + 2*F[w*C + c])/2.0
+					Y[i//2, w*C + c] = min(max(1e-7, Y[i//2, w*C + c]), 1-(1e-7))
+					sumK = sumK + Y[i//2, w*C + c]
 				for h in range(2):
 					sumC = 0.0
 					for c in range(C):
