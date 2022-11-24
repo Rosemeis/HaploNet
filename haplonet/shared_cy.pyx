@@ -281,10 +281,12 @@ cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 			for w in range(W):
 				sumC = 0.0
 				for c in range(C):
-					H[i, w*C + c] = L[i, w*C + c]*F[w*C + c]
-					sumC = sumC + H[i, w*C + c]
+					if mask[w*C + c] == 1:
+						H[i, w*C + c] = L[i, w*C + c]*F[w*C + c]
+						sumC = sumC + H[i, w*C + c]
 				for c in range(C):
-					H[i, w*C + c] = H[i, w*C + c]/sumC
+					if mask[w*C + c] == 1:
+						H[i, w*C + c] = H[i, w*C + c]/sumC
 		for i in prange(0, N, 2, num_threads=t):
 			m = 0
 			for w in range(W):
@@ -314,8 +316,8 @@ cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 						Y[i//2, m1+m2] = 0.0
 						for k in range(K):
 							Y[i//2, m1+m2] += U[i//2, k]*s[k]*V[k, m1+m2]
-						Y[i//2, m1+m2] = min(max((Y[i//2, m1+m2] + 2*F[w*C + c])/2.0, \
-							1e-7), 1-(1e-7))
+						Y[i//2, m1+m2] = (Y[i//2, m1+m2] + 2*F[w*C + c])/2.0
+						Y[i//2, m1+m2] = min(max(1e-7, Y[i//2, m1+m2]), 1-(1e-7))
 						sumK = sumK + Y[i//2, m1+m2]
 						m2 = m2 + 1
 				for h in range(2):
@@ -335,8 +337,7 @@ cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 			for w in range(W):
 				for c in range(C):
 					if mask[w*C + c] == 1:
-						Y[i//2, m1] = H[i+0, w*C + c] + H[i+1, w*C + c] - \
-						2*F[w*C + c]
+						Y[i//2, m1] = H[i+0, w*C + c] + H[i+1, w*C + c] - 2*F[w*C + c]
 						m1 = m1 + 1
 
 # Iterative - Standardize
