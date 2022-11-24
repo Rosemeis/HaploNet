@@ -35,8 +35,8 @@ def main(args):
 	# Check input
 	assert (args.filelist is not None) or (args.like is not None), \
 			"No input data (-f or -l)"
-	if (args.iterative is not None) or args.dosage:
-		assert not args.cov, "Probabilistic approaches don't support cov estimation!"
+	if args.iterative is not None:
+		assert not args.cov, "Probabilistic approach don't support cov estimation!"
 
 	# Load data (and concatentate across windows)
 	print("Loading log-likelihood file(s).")
@@ -58,26 +58,30 @@ def main(args):
 
 	# Convert log-like to like
 	shared_cy.createLikes(L, args.threads)
-
-	if (args.iterative is not None) or args.dosage:
+	if args.iterative is not None:
 		# Estimate haplotype cluster frequencies
 		F = estimateF(L, args.threads)
 		if args.freqs:
 			np.save(args.out + ".haplotype.freqs", F)
 
+		# Filter out low frequency haplotype clusters
+		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
+		np.clip(F, 1e-6, (1.0 - 1e-6)) # Ensure non-zero values
+		mask = mask.astype(np.uint8) # Numeric mask for iterative process
+
 		# Prepare likes
 		L = np.swapaxes(L, 0, 1)
 		L = np.ascontiguousarray(L.reshape(N, W*C))
 		H = np.zeros(L.shape, dtype=np.float32) # Help container
-		Y = np.zeros((N//2, W*C), dtype=np.float32) # Pi container
+		Y = np.zeros((N//2, np.sum(mask, dtype=int)), dtype=np.float32) # Pi container
 
 		# Generate E
-		shared_cy.generateE(L, F, H, Y, W, C, args.threads)
+		shared_cy.generateE(L, F, H, Y, mask, W, C, args.threads)
 		if args.iterative is not None:
 			print("Iterative estimation of haplotype cluster frequencies.")
 			for i in range(100):
 				U, s, V = svds(Y, k=args.iterative)
-				shared_cy.generateP(L, F, H, Y, U, s, V, W, C, args.threads)
+				shared_cy.generateP(L, F, H, Y, U, s, V, mask, W, C, args.threads)
 				if i > 0:
 					diff = shared_cy.rmse2d(Y, Y_prev)
 					print("({}) Diff: {}".format(i, np.round(diff, 12)), flush=True)
@@ -88,14 +92,8 @@ def main(args):
 			del U, s, V, Y_prev
 		del L, H
 
-		# Filter out low frequency haplotype clusters
-		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
-		F = F[mask]
-		np.clip(F, 1e-6, (1.0 - 1e-6)) # Ensure non-zero values
-		Y = np.ascontiguousarray(Y[:, mask])
-
 		# Standardize dosage matrix
-		shared_cy.standardizeE(Y, F, args.threads)
+		shared_cy.standardizeE(Y, F, mask, args.threads)
 	else:
 		# Argmax approach
 		L = np.eye(C, dtype=np.int8)[np.argmax(L, axis=2).astype(np.int8)]
@@ -103,7 +101,6 @@ def main(args):
 		F /= float(N)
 		if args.freqs:
 			np.save(args.out + ".haplotype.freqs", F)
-		np.clip(F, 1e-6, (1.0 - 1e-6)) # Ensure non-zero values
 
 		# Construct data matrix
 		L = np.swapaxes(L, 0, 1)
@@ -113,6 +110,7 @@ def main(args):
 		# Filter out low frequency haplotype clusters
 		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
 		F = F[mask]
+		np.clip(F, 1e-6, (1.0 - 1e-6)) # Ensure non-zero values
 		L = np.ascontiguousarray(L[:, mask])
 
 	# Covariance mode
@@ -127,7 +125,7 @@ def main(args):
 		np.savetxt(args.out + ".cov", Cov, fmt="%.7f")
 		print("Saved covariance matrix as " + args.out + ".cov")
 	else:
-		if (args.iterative is None) and (not args.dosage):
+		if args.iterative is None:
 			Y = np.zeros(L.shape, dtype=np.float32)
 			shared_cy.standardizeY(L, F, Y, args.threads)
 

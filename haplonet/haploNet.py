@@ -104,10 +104,8 @@ def main():
 		help="Number of threads (1)")
 	parser_p.add_argument("-o", "--out", default="haplonet.pca",
 		help="Output path/name ('haplonet.pca')")
-	parser_p.add_argument("--dosage", action="store_true",
-		help="Perform dosage SVD")
 	parser_p.add_argument("--iterative", type=int,
-		help="Use iterative probabilistic approach")
+		help="Iterative probabilistic approach, specify number of eigenvectors")
 	parser_p.add_argument("--freqs", action="store_true",
 		help="Save haplotype cluster frequencies")
 	parser_p.add_argument("--loadings", action="store_true",
