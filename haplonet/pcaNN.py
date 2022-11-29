@@ -64,19 +64,24 @@ def main(args):
 		if args.freqs:
 			np.save(args.out + ".haplotype.freqs", F)
 
+		# Filter out low frequency haplotype clusters
+		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
+		mask_vec = mask.astype(np.int8)
+		T = np.sum(mask, dtype=int) # Number of haplotype clusters to use in optimization
+
 		# Prepare likes
 		L = np.swapaxes(L, 0, 1)
 		L = np.ascontiguousarray(L.reshape(N, W*C))
 		H = np.zeros(L.shape, dtype=np.float32) # Help container
-		Y = np.zeros((N//2, W*C), dtype=np.float32) # Pi container
+		Y = np.zeros((N//2, T), dtype=np.float32) # Pi container
 
 		# Generate E
-		shared_cy.generateE(L, F, H, Y, W, C, args.threads)
+		shared_cy.generateE(L, F, H, Y, mask_vec, W, C, args.threads)
 		if args.iterative is not None:
 			print("Iterative estimation of haplotype cluster frequencies.")
 			for i in range(100):
 				U, s, V = svds(Y, k=args.iterative)
-				shared_cy.generateP(L, F, H, Y, U, s, V, W, C, args.threads)
+				shared_cy.generateP(L, F, H, Y, U, s, V, mask_vec, W, C, args.threads)
 				if i > 0:
 					diff = shared_cy.rmse2d(Y, Y_prev)
 					print("({}) Diff: {}".format(i, np.round(diff, 12)), flush=True)
@@ -87,13 +92,9 @@ def main(args):
 			del U, s, V, Y_prev
 		del L, H
 
-		# Filter out low frequency haplotype clusters
-		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
+		# Standardize dosage matrix
 		F = F[mask]
 		np.clip(F, 1e-6, (1.0 - 1e-6)) # Ensure non-zero values
-		Y = np.ascontiguousarray(Y[:, mask])
-
-		# Standardize dosage matrix
 		shared_cy.standardizeE(Y, F, args.threads)
 	else:
 		# Argmax approach

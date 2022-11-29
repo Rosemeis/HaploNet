@@ -270,9 +270,9 @@ cpdef emFrequency(float[:,:,::1] L, float[::1] F, float[:,:,::1] H, int t):
 
 # Iterative - Center
 cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
-		int W, int C, int t):
+		signed char[::1] mask, int W, int C, int t):
 	cdef int N = L.shape[0]
-	cdef int i, w, c
+	cdef int i, w, c, s
 	cdef float sumC
 	with nogil:
 		for i in prange(N, num_threads=t):
@@ -284,39 +284,55 @@ cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 				for c in range(C):
 					H[i, w*C + c] = H[i, w*C + c]/sumC
 		for i in prange(0, N, 2, num_threads=t):
+			s = 0
 			for w in range(W):
 				for c in range(C):
-					Y[i//2, w*C + c] = H[i+0, w*C + c] + H[i+1, w*C + c] - 2*F[w*C + c]
+					if mask[w*C + c] == 1:
+						Y[i//2, s] = H[i+0, w*C + c] + H[i+1, w*C + c] - 2*F[w*C + c]
+						s = s + 1
 
 # Iterative - PCAngsd
 cpdef generateP(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
-		float[:,:] U, float[:] s, float[:,:] V, int W, int C, int t):
+		float[:,:] U, float[:] s, float[:,:] V, signed char[::1] mask, int W, int C, \
+		int t):
 	cdef int N = L.shape[0]
 	cdef int K = s.shape[0]
-	cdef int i, k, w, c, h
+	cdef int i, k, w, c, h, s1, s2
 	cdef float sumC, sumK
 	with nogil:
 		for i in prange(0, N, 2, num_threads=t):
+			s1 = 0
 			for w in range(W):
+				s2 = 0
 				sumK = 0.0
 				for c in range(C):
-					Y[i//2, w*C + c] = 0.0
-					for k in range(K):
-						Y[i//2, w*C + c] += U[i//2, k]*s[k]*V[k, w*C + c]
-					Y[i//2, w*C + c] = (Y[i//2, w*C + c] + 2*F[w*C + c])/2.0
-					Y[i//2, w*C + c] = min(max(1e-7, Y[i//2, w*C + c]), 1-(1e-7))
-					sumK = sumK + Y[i//2, w*C + c]
+					if mask[w*C + c] == 1:
+						Y[i//2, s1+s2] = 0.0
+						for k in range(K):
+							Y[i//2, s1+s2] += U[i//2, k]*s[k]*V[k, s1+s2]
+						Y[i//2, s1+s2] = (Y[i//2, s1+s2] + 2*F[w*C + c])/2.0
+						Y[i//2, s1+s2] = min(max(1e-7, Y[i//2, s1+s2]), 1-(1e-7))
+						sumK = sumK + Y[i//2, s1+s2]
+						s2 = s2 + 1
 				for h in range(2):
+					s2 = 0
 					sumC = 0.0
 					for c in range(C):
-						H[i+h, w*C + c] = L[i+h, w*C + c]*(Y[i//2, w*C + c]/sumK)
-						sumC = sumC + H[i+h, w*C + c]
+						if mask[w*C + c] == 1:
+							H[i+h, w*C + c] = L[i+h, w*C + c]*(Y[i//2, s1+s2]/sumK)
+							sumC = sumC + H[i+h, w*C + c]
+							s2 = s2 + 1
 					for c in range(C):
-						H[i+h, w*C + c] = H[i+h, w*C + c]/sumC
+						if mask[w*C + c] == 1:
+							H[i+h, w*C + c] = H[i+h, w*C + c]/sumC
+				s1 = s1 + s2
 		for i in prange(0, N, 2, num_threads=t):
+			s1 = 0
 			for w in range(W):
 				for c in range(C):
-					Y[i//2, w*C + c] = H[i+0, w*C + c] + H[i+1, w*C + c] - 2*F[w*C + c]
+					if mask[w*C + c] == 1:
+						Y[i//2, s1] = H[i+0, w*C + c] + H[i+1, w*C + c] - 2*F[w*C + c]
+						s1 = s1 + 1
 
 # Iterative - Standardize
 cpdef standardizeE(float[:,::1] Y, float[::1] F, int t):
