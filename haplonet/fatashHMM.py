@@ -48,6 +48,12 @@ def main(args):
 	else:
 		L = np.load(args.like)
 	Q = np.genfromtxt(args.prop).astype(np.float32) # Ancestry proportions
+	low_tol = 0.001
+	print("Rounding low values")
+	Q[Q<low_tol] = low_tol
+	Q[Q>(1-low_tol)] = 1-low_tol
+	Q /= Q.sum(1, keepdims=True)
+
 	F = np.load(args.freq).astype(np.float32) # Ancestral haplotype cluster frequencies
 	assert L.shape[0] == F.shape[0], "Number of windows doesn't match!"
 	assert L.shape[1] == Q.shape[0]*2, "Number of individuals doesn't match!"
