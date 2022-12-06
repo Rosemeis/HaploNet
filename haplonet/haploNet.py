@@ -121,10 +121,14 @@ def main():
 		help="Path to estimated global ancestry proportions")
 	parser_f.add_argument("-p", "--freq",
 		help="Path to ancestral haplotype cluster frequencies")
+	parser_f.add_argument("-w", "--windows",
+		help="Path to window starting positions")
 	parser_f.add_argument("-t", "--threads", type=int,
 		help="Number of threads (1)")
 	parser_f.add_argument("-o", "--out", default="haplonet.fatash",
 		help="Output path/name ('haplonet.fatash')")
+	parser_f.add_argument("--q_bound", type=float, default=0.001,
+		help="Boundary for admixture proportions")
 	parser_f.add_argument("--alpha", type=float, default=0.01,
 		help="Set initial alpha, rate of transition between states")
 	parser_f.add_argument("--alpha_bound", nargs=2, type=float,

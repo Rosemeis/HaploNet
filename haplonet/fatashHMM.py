@@ -47,17 +47,31 @@ def main(args):
 		del L_list
 	else:
 		L = np.load(args.like)
+		
 	Q = np.genfromtxt(args.prop).astype(np.float32) # Ancestry proportions
-	low_tol = 0.001
-	print("Rounding low values")
+	low_tol = args.q_bound
 	Q[Q<low_tol] = low_tol
 	Q[Q>(1-low_tol)] = 1-low_tol
 	Q /= Q.sum(1, keepdims=True)
-
 	F = np.load(args.freq).astype(np.float32) # Ancestral haplotype cluster frequencies
+
+	if args.windows:
+		print("Continuous HMM")
+		windows = np.genfromtxt(args.windows).astype(np.float32)
+		windows = np.diff(windows, prepend=0,n=1).astype(np.float32)
+		chrom_skip = windows<0
+		## put chromsoome jumps to large value
+		windows[windows<0] = 1e9
+		## normalizing the windows on the same chromosomes
+		windows[~chrom_skip] = windows[~chrom_skip]/np.mean(windows[~chrom_skip])
+	else:
+		print("Discrete HMM")
+		windows = np.ones(F.shape[0]) # setting all windows to 1 disables continuous
+
 	assert L.shape[0] == F.shape[0], "Number of windows doesn't match!"
 	assert L.shape[1] == Q.shape[0]*2, "Number of individuals doesn't match!"
 	assert Q.shape[1] == F.shape[1], "Number of ancestral components doesn't match!"
+	assert Ws.shape[0] == F.shape[0], "Number of position windows do not match anc. freq. windows"
 	W, N, C = L.shape
 	K = Q.shape[1]
 	print("Loaded {} haplotypes, {} windows, {} clusters.".format(N, W, C))
@@ -69,7 +83,8 @@ def main(args):
 	# Initiate containers and values
 	alpha = args.alpha
 	E = np.zeros((W, N, K), dtype=np.float32) # Emission probabilities
-	T = np.zeros((K, K), dtype=np.float32) # Transition probabilities
+	# T = np.zeros((K, K), dtype=np.float32) # Transition probabilities
+	T = np.zeros((W, K, K), dtype=np.float32) # Transition probabilities with distances
 	if args.alpha_save:
 		a = np.ones(N, dtype=np.float32)*alpha # Individual alpha values
 
@@ -96,8 +111,11 @@ def main(args):
 		for i in range(N):
 			print("\rProcessing haplotype {}/{}".format(i+1, N), end="")
 
+			# # Compute transitions
+			# lahmm_cy.calcTransition(T, Q[i//2], alpha)
+
 			# Compute transitions
-			lahmm_cy.calcTransition(T, Q[i//2], alpha)
+			lahmm_cy.calcTransitionDist(T, Q[i//2], alpha, windows)
 
 			# Optimize alpha
 			if not args.no_optim:
