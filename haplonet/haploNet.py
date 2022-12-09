@@ -132,11 +132,15 @@ def main():
 	parser_f.add_argument("--alpha", type=float, default=0.01,
 		help="Set initial alpha, rate of transition between states")
 	parser_f.add_argument("--alpha_bound", nargs=2, type=float,
-		default=[0.001, 0.1], help="Bounds on alpha")
+		default=[0.00001, 0.05], help="Bounds on alpha")
 	parser_f.add_argument("--alpha_save", action="store_true",
 		help="Save individual alphas")
+	parser_f.add_argument("--window_save", action="store_true",
+		help="Save normalized distances between windows")
 	parser_f.add_argument("--no_optim", action="store_true",
-		help="Do NOT optimize individual alphas using SciPy")
+		help="Do NOT optimize individual alphas using SciPy (legacy, not used)")
+	parser_f.add_argument("--optim", action="store_true",
+		help="Optimize individual alphas using SciPy")
 	parser_f.add_argument("--viterbi", action="store_true",
 		help="Compute and save viterbi decoding")
 
@@ -197,7 +201,7 @@ def main():
 		else:
 			from haplonet import pcaNN
 			pcaNN.main(args)
-	if sys.argv[1] == "fatash":
+	if sys.argv[1] == "fatash" or sys.argv[1] == "fatass":
 		if len(sys.argv) < 3:
 			parser_f.print_help()
 			sys.exit()

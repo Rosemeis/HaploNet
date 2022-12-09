@@ -14,7 +14,7 @@ from haplonet import shared_cy
 # Log-likehood wrapper for SciPy
 def loglike_wrapper(param, *args):
 	E, Qi, T, i = args
-	lahmm_cy.calcTransition(T, Qi, param)
+	lahmm_cy.calcTransitionDist(T, Qi, param)
 	return lahmm_cy.loglike(E, Qi, T, i)
 
 
@@ -22,7 +22,7 @@ def loglike_wrapper(param, *args):
 def main(args):
 	##### HaploNet - FATASH #####
 	print("HaploNet - FATASH")
-	print("Discrete HMM for inferring local ancestry tracts.\n")
+	print("HMM for inferring local ancestry tracts.\n")
 
 	# Check input
 	assert (args.filelist is not None) or (args.like is not None), \
@@ -63,15 +63,15 @@ def main(args):
 		## put chromsoome jumps to large value
 		windows[windows<0] = 1e9
 		## normalizing the windows on the same chromosomes
-		windows[~chrom_skip] = windows[~chrom_skip]/np.mean(windows[~chrom_skip])
+		windows[~chrom_skip] = windows[~chrom_skip]/1e6
 	else:
 		print("Discrete HMM")
-		windows = np.ones(F.shape[0]) # setting all windows to 1 disables continuous
+		windows = np.ones(F.shape[0], dtype=np.float32) # setting all windows to 1 disables continuous
 
 	assert L.shape[0] == F.shape[0], "Number of windows doesn't match!"
 	assert L.shape[1] == Q.shape[0]*2, "Number of individuals doesn't match!"
 	assert Q.shape[1] == F.shape[1], "Number of ancestral components doesn't match!"
-	assert Ws.shape[0] == F.shape[0], "Number of position windows do not match anc. freq. windows"
+	assert windows.shape[0] == F.shape[0], "Number of position windows do not match anc. freq. windows"
 	W, N, C = L.shape
 	K = Q.shape[1]
 	print("Loaded {} haplotypes, {} windows, {} clusters.".format(N, W, C))
@@ -98,6 +98,10 @@ def main(args):
 	else:
 		n_chr = 1
 
+	if args.window_save:
+		np.savetxt(args.out + ".windows", windows, fmt="%.7f")
+		print("Saved normalized windows to " + args.out + ".windows")
+
 	# Run through each chromosome
 	for chr in range(n_chr):
 		print("Chromosome {}/{}".format(chr+1, n_chr))
@@ -111,14 +115,9 @@ def main(args):
 		for i in range(N):
 			print("\rProcessing haplotype {}/{}".format(i+1, N), end="")
 
-			# # Compute transitions
-			# lahmm_cy.calcTransition(T, Q[i//2], alpha)
-
-			# Compute transitions
-			lahmm_cy.calcTransitionDist(T, Q[i//2], alpha, windows)
 
 			# Optimize alpha
-			if not args.no_optim:
+			if args.optim:
 				opt=optim.minimize_scalar(fun=loglike_wrapper,
 											args=(E[F_list[chr]:F_list[chr+1]], Q[i//2], T, i),
 											method='bounded',
@@ -126,6 +125,12 @@ def main(args):
 				alpha = opt.x
 				if args.alpha_save:
 					a[i] = alpha
+
+			# # Compute transitions
+			# lahmm_cy.calcTransition(T, Q[i//2], alpha)
+
+			# Compute transitions
+			lahmm_cy.calcTransitionDist(T, Q[i//2], alpha, windows)
 
 			# Compute posterior probabilities (forward-backward)
 			lahmm_cy.fwdbwd(E[F_list[chr]:F_list[chr+1]], Q[i//2], P, T, i)
@@ -139,7 +144,7 @@ def main(args):
 			np.savetxt(args.out + ".path", np.argmax(P, axis=2).T, fmt="%i")
 			print("Saved posterior decoding path as " + args.out + ".path")
 			np.save(args.out + ".prob", P.astype(float))
-			print("Saved posterior probabilities as " + args.out + ".prob")
+			print("Saved posterior probabilities as " + args.out + ".prob.npy")
 			if args.viterbi:
 				np.savetxt(args.out + ".viterbi", V.T, fmt="%i")
 				print("Saved viterbi decoing path as " + args.out + ".viterbi")

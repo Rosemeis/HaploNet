@@ -66,8 +66,8 @@ cpdef calcTransition(float[:,::1] T, float[::1] Qi, float a):
 
 # Create transition matrix with distance
 cpdef calcTransitionDist(float[:, :,::1] T, float[::1] Qi, float a, float[::1] W):
-	cdef int K = T.shape[1]
 	cdef int nW = T.shape[0]
+	cdef int K = T.shape[1]
 	cdef int i, j, w
 	for w in range(nW):
 		for i in range(K):
@@ -79,7 +79,7 @@ cpdef calcTransitionDist(float[:, :,::1] T, float[::1] Qi, float a, float[::1] W
 					T[w,i,j] = log((1.0 - exp(-a*W[w]))*Qi[i])
 
 # Log-likelihood function
-cpdef double loglike(float[:,:,::1] E, float[::1] Qi, float[:,::1] T, int i):
+cpdef double loglike(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] T, int i):
 	cdef int W = E.shape[0]
 	cdef int K = E.shape[2]
 	cdef int w, k, k1, k2
@@ -91,7 +91,7 @@ cpdef double loglike(float[:,:,::1] E, float[::1] Qi, float[:,::1] T, int i):
 	for w in range(1, W):
 		for k1 in range(K):
 			for k2 in range(K):
-				logK[k2] = T[k1,k2] + logP[k2]
+				logK[k2] = T[w,k1,k2] + logP[k2]
 			logP[k1] = logsumexp(logK, K) + E[w, i, k1]
 	loglike = logsumexp(logP, K)
 
@@ -102,7 +102,7 @@ cpdef double loglike(float[:,:,::1] E, float[::1] Qi, float[:,::1] T, int i):
 
 
 # Forward backward algorithm
-cpdef fwdbwd(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] P, float[:,::1] T, int i):
+cpdef fwdbwd(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] P, float[:,:,::1] T, int i):
 	cdef int W = E.shape[0]
 	cdef int K = E.shape[2]
 	cdef int w, k, k1, k2
@@ -118,7 +118,7 @@ cpdef fwdbwd(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] P, float[:,::1] T, 
 	for w in range(1, W):
 		for k1 in range(K):
 			for k2 in range(K):
-				tmp_fwd[k2] = T[k1,k2] + res_fwd[(w-1)*K + k2]
+				tmp_fwd[k2] = T[w,k1,k2] + res_fwd[(w-1)*K + k2]
 			res_fwd[w*K + k1] = logsumexp(tmp_fwd, K) + E[w, i, k1]
 
 	# Log-likelihood forward
@@ -132,7 +132,7 @@ cpdef fwdbwd(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] P, float[:,::1] T, 
 	for w in range(W-2, -1, -1):
 		for k1 in range(K):
 			for k2 in range(K):
-				tmp_bwd[k2] = T[k2,k1] + res_bwd[(w+1)*K + k2] + E[w+1, i, k2]
+				tmp_bwd[k2] = T[w+1,k2,k1] + res_bwd[(w+1)*K + k2] + E[w+1, i, k2]
 			res_bwd[w*K + k1] = logsumexp(tmp_bwd, K)
 
 	# Log-likelihood backward
@@ -140,7 +140,7 @@ cpdef fwdbwd(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] P, float[:,::1] T, 
 		tmp_bwd[k] = res_bwd[0*K + k] + E[0, i, k] + log(Qi[k])
 	ll_bwd = logsumexp(tmp_bwd, K)
 
-	# Check if log-likelihoods matches
+	# Check if rel log-likelihoods matches
 	assert abs(ll_fwd - ll_bwd)/ll_fwd < 1e-4
 
 	# Update posterior
@@ -156,7 +156,7 @@ cpdef fwdbwd(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] P, float[:,::1] T, 
 
 
 # Viterbi algorithm
-cpdef viterbi(float[:,:,::1] E, float[::1] Qi, int[:,::1] V, float[:,::1] T, int i):
+cpdef viterbi(float[:,:,::1] E, float[::1] Qi, int[:,::1] V, float[:,:,::1] T, int i):
 	cdef int W = E.shape[0]
 	cdef int K = E.shape[2]
 	cdef int w, k, k1, k2
@@ -170,7 +170,7 @@ cpdef viterbi(float[:,:,::1] E, float[::1] Qi, int[:,::1] V, float[:,::1] T, int
 	for w in range(1, W):
 		for k1 in range(K):
 			for k2 in range(K):
-				tmp_vit[k2] = T[k1,k2] + res_vit[(w-1)*K + k2]
+				tmp_vit[k2] = T[w,k1,k2] + res_vit[(w-1)*K + k2]
 			res_vit[w*K + k1] = maxarr(tmp_vit, K) + E[w, i, k1]
 			arg_vit[w*K + k1] = argmax(tmp_vit, K)
 	for k in range(K):
