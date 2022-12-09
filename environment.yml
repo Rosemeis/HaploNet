@@ -1,6 +1,5 @@
 name: haplonet
 channels:
-    - defaults
     - conda-forge
     - pytorch
 dependencies:
