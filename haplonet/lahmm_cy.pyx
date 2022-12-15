@@ -72,7 +72,6 @@ cpdef calcTransitionDist(float[:, :,::1] T, float[::1] Qi, float a, float[::1] W
 	for w in range(nW):
 		for i in range(K):
 			for j in range(K):
-				## TODO check w index is correct for first window. very tired
 				if i == j:
 					T[w,i,j] = log((1.0 - exp(-a*W[w]))*Qi[i] + exp(-a*W[w]))
 				else:

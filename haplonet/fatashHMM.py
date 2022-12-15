@@ -55,25 +55,25 @@ def main(args):
 	Q /= Q.sum(1, keepdims=True)
 	F = np.load(args.freq).astype(np.float32) # Ancestral haplotype cluster frequencies
 
-	if args.windows:
-		print("Continuous HMM")
-		windows = np.genfromtxt(args.windows).astype(np.float32)
-		windows = np.diff(windows, prepend=0,n=1).astype(np.float32)
-		chrom_skip = windows<0
-		## put chromsoome jumps to large value
-		windows[windows<0] = 1e9
-		## normalizing the windows on the same chromosomes
-		windows[~chrom_skip] = windows[~chrom_skip]/1e6
-	else:
+	W, N, C = L.shape
+	K = Q.shape[1]
+	if not args.windows:
 		print("Discrete HMM")
-		windows = np.ones(F.shape[0], dtype=np.float32) # setting all windows to 1 disables continuous
+		windows = np.ones((W, N), dtype=np.float32) # setting all windows to 1 disables continuous
+	else:
+		print("Continuous HMM")
+		windows = np.loadtxt(args.windows).astype(np.float32)
+		assert windows.shape[0] == W, "Number of position windows do not match loglike windows"
+		if windows.ndim==2:
+			print("Window distances per haplotypes")
+			assert windows.shape[1] == N, "Number of columns in windows must match number of haplotypes"
+		else:
+			print("Same window distances for all haplotypes")
+			windows = np.repeat(windows, N).reshape(W,N) 
 
 	assert L.shape[0] == F.shape[0], "Number of windows doesn't match!"
 	assert L.shape[1] == Q.shape[0]*2, "Number of individuals doesn't match!"
 	assert Q.shape[1] == F.shape[1], "Number of ancestral components doesn't match!"
-	assert windows.shape[0] == F.shape[0], "Number of position windows do not match anc. freq. windows"
-	W, N, C = L.shape
-	K = Q.shape[1]
 	print("Loaded {} haplotypes, {} windows, {} clusters.".format(N, W, C))
 	print("Performing FATASH with {} ancestral components.".format(K))
 
@@ -130,7 +130,7 @@ def main(args):
 			# lahmm_cy.calcTransition(T, Q[i//2], alpha)
 
 			# Compute transitions
-			lahmm_cy.calcTransitionDist(T, Q[i//2], alpha, windows)
+			lahmm_cy.calcTransitionDist(T, Q[i//2], alpha, windows[:, i])
 
 			# Compute posterior probabilities (forward-backward)
 			lahmm_cy.fwdbwd(E[F_list[chr]:F_list[chr+1]], Q[i//2], P, T, i)
