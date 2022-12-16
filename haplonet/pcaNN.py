@@ -79,7 +79,7 @@ def main(args):
 		shared_cy.generateE(L, F, H, Y, mask_vec, W, C, args.threads)
 		if args.iterative is not None:
 			print("Iterative estimation of haplotype cluster frequencies.")
-			for i in range(100):
+			for i in range(args.iterations):
 				U, s, V = svds(Y, k=args.iterative)
 				shared_cy.generateP(L, F, H, Y, U, s, V, mask_vec, W, C, args.threads)
 				if i > 0:
