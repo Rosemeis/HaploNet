@@ -106,6 +106,8 @@ def main():
 		help="Output path/name ('haplonet.pca')")
 	parser_p.add_argument("--iterative", type=int,
 		help="Iterative probabilistic approach, specify number of eigenvectors")
+	parser_p.add_argument("--iterations", type=int,
+		help="Number of iterations run optimizer (100)", default=100)
 	parser_p.add_argument("--freqs", action="store_true",
 		help="Save haplotype cluster frequencies")
 	parser_p.add_argument("--loadings", action="store_true",
