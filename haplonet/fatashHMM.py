@@ -13,8 +13,8 @@ from haplonet import shared_cy
 
 # Log-likehood wrapper for SciPy
 def loglike_wrapper(param, *args):
-	E, Qi, T, i = args
-	lahmm_cy.calcTransitionDist(T, Qi, param)
+	E, Qi, T, Wi, i = args
+	lahmm_cy.calcTransitionDist(T, Qi, Wi, param)
 	return lahmm_cy.loglike(E, Qi, T, i)
 
 
@@ -49,9 +49,7 @@ def main(args):
 		L = np.load(args.like)
 		
 	Q = np.genfromtxt(args.prop).astype(np.float32) # Ancestry proportions
-	low_tol = args.q_bound
-	Q[Q<low_tol] = low_tol
-	Q[Q>(1-low_tol)] = 1-low_tol
+	np.clip(Q, a_min=args.q_bound, a_max=1-args.q_bound, out=Q)
 	Q /= Q.sum(1, keepdims=True)
 	F = np.load(args.freq).astype(np.float32) # Ancestral haplotype cluster frequencies
 
@@ -84,7 +82,6 @@ def main(args):
 	# Initiate containers and values
 	alpha = args.alpha
 	E = np.zeros((W, N, K), dtype=np.float32) # Emission probabilities
-	# T = np.zeros((K, K), dtype=np.float32) # Transition probabilities
 	T = np.zeros((W, K, K), dtype=np.float32) # Transition probabilities with distances
 	if args.alpha_save:
 		a = np.ones(N, dtype=np.float32)*alpha # Individual alpha values
@@ -120,18 +117,15 @@ def main(args):
 			# Optimize alpha
 			if args.optim:
 				opt=optim.minimize_scalar(fun=loglike_wrapper,
-											args=(E[F_list[chr]:F_list[chr+1]], Q[i//2], T, i),
+											args=(E[F_list[chr]:F_list[chr+1]], Q[i//2], T, windows[i], i),
 											method='bounded',
 											bounds=tuple(args.alpha_bound))
 				alpha = opt.x
 				if args.alpha_save:
 					a[i] = alpha
 
-			# # Compute transitions
-			# lahmm_cy.calcTransition(T, Q[i//2], alpha)
-
 			# Compute transitions
-			lahmm_cy.calcTransitionDist(T, Q[i//2], alpha, windows[i])
+			lahmm_cy.calcTransitionDist(T, Q[i//2], windows[i], alpha)
 
 			# Compute posterior probabilities (forward-backward)
 			lahmm_cy.fwdbwd(E[F_list[chr]:F_list[chr+1]], Q[i//2], P, T, i)

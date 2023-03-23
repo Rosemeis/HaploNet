@@ -139,8 +139,6 @@ def main():
 		help="Save individual alphas")
 	parser_f.add_argument("--window_save", action="store_true",
 		help="Save normalized distances between windows")
-	parser_f.add_argument("--no_optim", action="store_true",
-		help="Do NOT optimize individual alphas using SciPy (legacy, not used)")
 	parser_f.add_argument("--optim", action="store_true",
 		help="Optimize individual alphas using SciPy")
 	parser_f.add_argument("--viterbi", action="store_true",

@@ -72,7 +72,7 @@ cdef checkZeroLog(float a):
 		return(log(a))
 
 # Create transition matrix with distance
-cpdef calcTransitionDist(float[:, :,::1] T, float[::1] Qi, float a, float[::1] W):
+cpdef calcTransitionDist(float[:, :,::1] T, float[::1] Qi, float[::1] W, float a):
 	cdef int nW = T.shape[0]
 	cdef int K = T.shape[1]
 	cdef int i, j, w
@@ -83,7 +83,6 @@ cpdef calcTransitionDist(float[:, :,::1] T, float[::1] Qi, float a, float[::1] W
 					T[w,i,j] = log((1.0 - exp(-a*W[w]))*Qi[i] + exp(-a*W[w]))
 				else:
 					T[w,i,j] = checkZeroLog((1.0 - exp(-a*W[w]))*Qi[i])
-					# T[w,i,j] = log((1.0 - exp(-a*W[w]))*Qi[i])
 
 # Log-likelihood function
 cpdef double loglike(float[:,:,::1] E, float[::1] Qi, float[:,:,::1] T, int i):

@@ -279,10 +279,12 @@ cpdef generateE(float[:,::1] L, float[::1] F, float[:,::1] H, float[:,::1] Y, \
 			for w in range(W):
 				sumC = 0.0
 				for c in range(C):
-					H[i, w*C + c] = L[i, w*C + c]*F[w*C + c]
-					sumC = sumC + H[i, w*C + c]
+					if mask[w*C + c] == 1:
+						H[i, w*C + c] = L[i, w*C + c]*F[w*C + c]
+						sumC = sumC + H[i, w*C + c]
 				for c in range(C):
-					H[i, w*C + c] = H[i, w*C + c]/sumC
+					if mask[w*C + c] == 1:
+						H[i, w*C + c] = H[i, w*C + c]/sumC
 		for i in prange(0, N, 2, num_threads=t):
 			s = 0
 			for w in range(W):
