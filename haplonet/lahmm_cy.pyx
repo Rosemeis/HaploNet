@@ -65,11 +65,11 @@ cpdef calcTransition(float[:,::1] T, float[::1] Qi, float a):
 				T[i,j] = log((1.0 - exp(-a))*Qi[i])
 
 # Check log of zero
-cdef checkZeroLog(float a):
-	if a<1e-15:
-		return(-1e6)
+cdef checkZeroLog(float val):
+	if val < 1e-12:
+		return(log(1e-12))
 	else:
-		return(log(a))
+		return(log(val))
 
 # Create transition matrix with distance
 cpdef calcTransitionDist(float[:, :,::1] T, float[::1] Qi, float[::1] W, float a):
