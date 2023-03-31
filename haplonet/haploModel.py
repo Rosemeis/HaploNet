@@ -72,7 +72,9 @@ class GMVAENet(nn.Module):
 
 	# Gumbel-softmax reparameterization
 	def reparameterize_gumbel(self, logits, temp):
-		return F.gumbel_softmax(logits, tau=temp)
+		U = torch.rand_like(logits)
+		G = logits + (-torch.log(-torch.log(U + 1e-10) + 1e-10))
+		return F.softmax(G/temp, dim=1)
 
 	# Forward propagation
 	def forward(self, x):

@@ -184,7 +184,7 @@ def main(args, deaf):
 		model = haploModel.GMVAENet(segG.size(1), args.h_dim, args.z_dim, \
 			args.y_dim, args.depth, args.temp)
 		model.to(dev)
-		optimizer = torch.optim.Adam(model.parameters(), lr=args.rate)
+		optimizer = torch.optim.AdamW(model.parameters(), lr=args.rate)
 
 		# Run training (and validation)
 		for epoch in range(args.epochs):
