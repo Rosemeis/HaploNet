@@ -33,6 +33,7 @@ You can now run HaploNet with the `haplonet` command.
 For phased haplotype data for a single chromosome as a VCF file of *M* SNPs and *N* individuals, we can generate a *M x 2N* haplotype matrix using scikit-allel.
 ```bash
 haplonet convert --vcf chr1.vcf.gz --out chr1
+
 # Saves int8 NumPy matrix in binary format (chr1.npy)
 ```
 
@@ -42,6 +43,8 @@ haplonet train --geno chr1.npy --cuda --out haplonet
 
 # You can also use the VCF directly as input
 haplonet train --vcf chr1.vcf.gz --cuda --out haplonet
+
+# Saves log-likelihoods in binary NumPy matrix (haplonet.loglike.npy) 
 ```
 HaploNet outputs the neural network log-likelihoods by default which are used to infer global population structure (PCA and admixture). With the '--latent' argument, the parameters of the learnt latent spaces of the GMVAE can be saved as well. See all available options in HaploNet with the following command:
 ```bash
@@ -52,12 +55,15 @@ haplonet pca -h # perform pca
 haplonet convert -h # convert VCF file to NumPy binary format
 ```
 
-All the following analyses assume that HaploNet has been run for all chromosomes such that the filepaths of the log-likelihoods for each chromosomes are in one file. The argument "--like" can be used if you only have one chromosome or merged file.
+All the following analyses assume that HaploNet has been run for all chromosomes and a file has been created, which contains the filepaths of the log-likelihood output files ("x.loglike.npy") for each chromosome. The argument "--like" can be used if you only have one chromosome or merged file.
 
 ### Estimate ancestry proportions and haplotype cluster frequencies
 The EM algorithm in HaploNet can be run with *K=2* and 64 threads (CPU based).
 ```bash
 haplonet admix --filelist chr.loglike.list --K 2 --threads 64 --seed 0 --out haplonet.admixture.k2
+
+# Saves ancestry proportions in a text-file (haplonet.admixture.k2.q)
+# and ancestral cluster frequencies in a binary NumPy matrix (haplonet.admixture.k2.f.npy)
 ```
 
 And the admixture proportions can as an example be plotted in R as follows:
