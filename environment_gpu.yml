@@ -1,0 +1,14 @@
+name: haplonet
+channels:
+  - default
+  - pytorch
+  - nvidia
+dependencies:
+  - python
+  - numpy
+  - scipy
+  - cython
+  - pytorch
+  - pytorch-cuda=11.7
+  - pip:
+    - cyvcf2

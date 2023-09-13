@@ -21,7 +21,7 @@ def estimateF(L, threads):
 		shared_cy.emFrequency(L, F, H, threads)
 		diff = shared_cy.rmse1d(F, F_prev)
 		if diff < 1e-4:
-			print("EM (Haplotype frequencies) has converged ({}).".format(i+1))
+			print(f"EM (Haplotype frequencies) has converged ({i+1}).")
 			break
 		F_prev = np.copy(F)
 	del H
@@ -46,15 +46,15 @@ def main(args):
 			file_c = 1
 			for chr in f:
 				L_list.append(np.load(chr.strip("\n")))
-				print("\rParsed file #" + str(file_c), end="")
+				print(f"\rParsed file #{file_c}", end="")
 				file_c += 1
 			print(".")
 		L = np.concatenate(L_list, axis=0)
 		del L_list
 	else:
 		L = np.load(args.like)
-	print("Loaded {} haplotypes, {} windows, {} clusters.".format(L.shape[1], L.shape[0], L.shape[2]))
 	W, N, C = L.shape
+	print(f"Loaded {N} haplotypes, {W} windows, {C} clusters.")
 
 	# Convert log-like to like
 	shared_cy.createLikes(L, args.threads)
@@ -62,7 +62,7 @@ def main(args):
 		# Estimate haplotype cluster frequencies
 		F = estimateF(L, args.threads)
 		if args.freqs:
-			np.save(args.out + ".haplotype.freqs", F)
+			np.save(f"{args.out}.haplotype.freqs", F)
 
 		# Filter out low frequency haplotype clusters
 		mask = (F >= args.filter) & (F <= (1.0 - args.filter))
@@ -84,7 +84,7 @@ def main(args):
 				shared_cy.generateP(L, F, H, Y, U, s, V, mask_vec, W, C, args.threads)
 				if i > 0:
 					diff = shared_cy.rmse2d(Y, Y_prev)
-					print("({}) Diff: {}".format(i, np.round(diff, 12)), flush=True)
+					print(f"({i}) Diff: {np.round(diff, 7)}", flush=True)
 					if diff < 5e-5:
 						print("Iterative estimations have converged.")
 						break
@@ -94,7 +94,7 @@ def main(args):
 
 		# Standardize dosage matrix
 		F = F[mask]
-		np.clip(F, 1e-6, (1.0 - 1e-6)) # Ensure non-zero values
+		np.clip(F, 1e-7, (1.0 - 1e-7)) # Ensure non-zero values
 		shared_cy.standardizeE(Y, F, args.threads)
 	else:
 		# Argmax approach
@@ -102,7 +102,7 @@ def main(args):
 		F = np.sum(L, axis=1).astype(np.float32).flatten()
 		F /= float(N)
 		if args.freqs:
-			np.save(args.out + ".haplotype.freqs", F)
+			np.save(f"{args.out}.haplotype.freqs", F)
 
 		# Construct data matrix
 		L = np.swapaxes(L, 0, 1)
@@ -124,26 +124,26 @@ def main(args):
 		shared_cy.covarianceY(L, F, Cov, args.threads)
 
 		# Save covariance matrix
-		np.savetxt(args.out + ".cov", Cov, fmt="%.7f")
-		print("Saved covariance matrix as " + args.out + ".cov")
+		np.savetxt(f"{args.out}.cov", Cov, fmt="%.7f")
+		print(f"Saved covariance matrix as {args.out}.cov")
 	else:
 		if args.iterative is None:
 			Y = np.zeros(L.shape, dtype=np.float32)
 			shared_cy.standardizeY(L, F, Y, args.threads)
 
 		# Perform SVD
-		print("Performing truncated SVD, extracting " + str(args.n_eig) + \
-				" eigenvectors.")
+		print(f"Performing truncated SVD, extracting {args.n_eig} eigenvectors.")
 		U, s, V = svds(Y, k=args.n_eig)
 
 		# Save matrices
-		np.savetxt(args.out + ".eigenvecs", U[:, ::-1], fmt="%.7f")
-		print("Saved eigenvectors as " + args.out + ".eigenvecs")
-		np.savetxt(args.out + ".eigenvals", s[::-1]**2/float(Y.shape[1]), fmt="%.7f")
-		print("Saved eigenvalues as " + args.out + ".eigenvals")
+		np.savetxt(f"{args.out}.eigenvecs", U[:,::-1], fmt="%.7f")
+		print(f"Saved eigenvectors as {args.out}.eigenvecs")
+		np.savetxt(f"{args.out}.eigenvals", s[::-1]**2/float(Y.shape[1]), fmt="%.7f")
+		print(f"Saved eigenvalues as {args.out}.eigenvals")
 		if args.loadings:
-			np.savetxt(args.out + ".loadings", V[::-1,:].T, fmt="%.7f")
-			print("Saved loadings as " + args.out + ".loadings")
+			np.savetxt(f"{args.out}.loadings", V[::-1,:].T, fmt="%.7f")
+			print(f"Saved loadings as {args.out}.loadings")
+
 
 
 ##### Main exception #####

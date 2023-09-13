@@ -40,7 +40,7 @@ def main(args):
 			for chr in f:
 				L_list.append(np.load(chr.strip("\n")))
 				F_list.append(L_list[-1].shape[0] + F_list[-1])
-				print("\rParsed file #" + str(file_c), end="")
+				print(f"\rParsed file #{file_c}", end="")
 				file_c += 1
 			print(".")
 		L = np.concatenate(L_list, axis=0)
@@ -64,7 +64,8 @@ def main(args):
 		assert windows.shape[0] == W, "Number of position windows do not match loglike windows"
 		if windows.ndim==2:
 			print("Window distances per haplotype")
-			assert windows.shape[1] == N, "Number of columns in windows must match number of haplotypes"
+			assert windows.shape[1] == N, \
+				"Number of columns in windows must match number of haplotypes"
 		else:
 			print("Same window distances for all haplotypes")
 			windows = np.repeat(windows, N).reshape(W,N) 
@@ -73,8 +74,8 @@ def main(args):
 	assert L.shape[0] == F.shape[0], "Number of windows doesn't match!"
 	assert L.shape[1] == Q.shape[0]*2, "Number of individuals doesn't match!"
 	assert Q.shape[1] == F.shape[1], "Number of ancestral components doesn't match!"
-	print("Loaded {} haplotypes, {} windows, {} clusters.".format(N, W, C))
-	print("Performing FATASH with {} ancestral components.".format(K))
+	print(f"Loaded {N} haplotypes, {W} windows, {C} clusters.")
+	print(f"Performing FATASH with {K} ancestral components.")
 
 	# Convert log-like to like
 	shared_cy.createLikes(L, args.threads)
@@ -97,29 +98,30 @@ def main(args):
 		n_chr = 1
 
 	if args.window_save:
-		np.savetxt(args.out + ".windows", windows, fmt="%.7f")
-		print("Saved normalized windows to " + args.out + ".windows")
+		np.savetxt(f"{args.out}.windows", windows, fmt="%.7f")
+		print(f"Saved normalized windows to {args.out}.windows")
 
 	# Run through each chromosome
 	for chr in range(n_chr):
-		print("Chromosome {}/{}".format(chr+1, n_chr))
+		print(f"Chromosome {chr+1}/{n_chr}")
 		if n_chr == 1:
-			F_list = [0, W]
+			F_list = [0,W]
 		P = np.zeros((F_list[chr+1] - F_list[chr], N, K), dtype=np.float32) # Posterior
 		if args.viterbi:
 			V = np.zeros((F_list[chr+1] - F_list[chr], N), dtype=np.int32) # Viterbi path
 
 		# Run HMM for each individual
 		for i in range(N):
-			print("\rProcessing haplotype {}/{}".format(i+1, N), end="")
-
+			print(f"\rProcessing haplotype {i+1}/{N}", end="")
 
 			# Optimize alpha
 			if args.optim:
-				opt=optim.minimize_scalar(fun=loglike_wrapper,
-											args=(E[F_list[chr]:F_list[chr+1]], Q[i//2], T, windows[i], i),
-											method='bounded',
-											bounds=tuple(args.alpha_bound))
+				opt=optim.minimize_scalar(
+					fun=loglike_wrapper,
+					args=(E[F_list[chr]:F_list[chr+1]], Q[i//2], T, windows[i], i),
+					method='bounded',
+					bounds=tuple(args.alpha_bound)
+				)
 				alpha = opt.x
 				if args.alpha_save:
 					a[i] = alpha
@@ -136,27 +138,27 @@ def main(args):
 
 		# Save matrices
 		if n_chr == 1:
-			np.savetxt(args.out + ".path", np.argmax(P, axis=2).T, fmt="%i")
-			print("Saved posterior decoding path as " + args.out + ".path")
-			np.save(args.out + ".prob", P.astype(float))
-			print("Saved posterior probabilities as " + args.out + ".prob.npy")
+			np.savetxt(f"{args.out}.path", np.argmax(P, axis=2).T, fmt="%i")
+			print(f"Saved posterior decoding path as {args.out}.path")
+			np.save(f"{args.out}.prob", P.astype(float))
+			print(f"Saved posterior probabilities as {args.out}.prob.npy")
 			if args.viterbi:
-				np.savetxt(args.out + ".viterbi", V.T, fmt="%i")
-				print("Saved viterbi decoing path as " + args.out + ".viterbi")
+				np.savetxt(f"{args.out}.viterbi", V.T, fmt="%i")
+				print(f"Saved viterbi decoing path as {args.out}.viterbi")
 			if args.alpha_save:
-				np.savetxt(args.out + ".alpha", a, fmt="%.7f")
-				print("Saved individual alpha values as " + args.out + ".alpha")
+				np.savetxt(f"{args.out}.alpha", a, fmt="%.7f")
+				print(f"Saved individual alpha values as {args.out}.alpha")
 		else:
-			np.savetxt(args.out + ".chr{}.path".format(chr+1), np.argmax(P, axis=2).T, fmt="%i")
-			print("Saved posterior decoding path as " + args.out + ".chr{}.path".format(chr+1))
-			np.save(args.out + ".chr{}.prob".format(chr+1), P.astype(float))
-			print("Saved posterior probabilities as " + args.out + ".chr{}.prob".format(chr+1))
+			np.savetxt(f"{args.out}.chr{chr+1}.path", np.argmax(P, axis=2).T, fmt="%i")
+			print(f"Saved posterior decoding path as {args.out}.chr{chr+1}.path")
+			np.save(f"{args.out}.chr{chr+1}.prob", P.astype(float))
+			print(f"Saved posterior probabilities as {args.out}.chr{chr+1}.prob")
 			if args.viterbi:
-				np.savetxt(args.out + ".chr{}.viterbi".format(chr+1), V.T, fmt="%i")
-				print("Saved viterbi decoing path as " + args.out + ".chr{}.viterbi".format(chr+1))
+				np.savetxt(args.out + ".chr{chr+1}.viterbi", V.T, fmt="%i")
+				print(f"Saved viterbi decoing path as {args.out}.chr{chr+1}.viterbi")
 			if args.alpha_save:
-				np.savetxt(args.out + ".chr{}.alpha".format(chr+1), a, fmt="%.7f")
-				print("Saved individual alpha values as " + args.out + ".chr{}.alpha".format(chr+1))
+				np.savetxt(args.out + ".chr{chr+1}.alpha", a, fmt="%.7f")
+				print(f"Saved individual alpha values as {args.out}.chr{chr+1}.alpha")
 		del P
 		if args.viterbi:
 			del V

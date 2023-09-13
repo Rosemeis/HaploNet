@@ -1,0 +1,13 @@
+name: haplonet
+channels:
+  - default
+  - pytorch
+dependencies:
+  - python
+  - numpy
+  - scipy
+  - cython
+  - pytorch
+  - cpuonly
+  - pip:
+    - cyvcf2

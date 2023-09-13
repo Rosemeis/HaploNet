@@ -14,10 +14,8 @@ def main():
 	### Commands
 	# haplonet train
 	parser_t = subparsers.add_parser("train")
-	parser_t.add_argument("-g", "--geno",
-		help="Genotype file in binary NumPy format")
-	parser_t.add_argument("-v", "--vcf",
-		help="Genotype file in VCF format")
+	parser_t.add_argument("-g", "--vcf", "--bcf", metavar="FILE",
+		help="Input phased genotype file in VCF/BCF format")
 	parser_t.add_argument("-w", "--windows",
 		help="Use provided window splitting points")
 	parser_t.add_argument("-x", "--x_dim", type=int, default=1024,
@@ -81,12 +79,12 @@ def main():
 		help="Random seed (0)")
 	parser_a.add_argument("-o", "--out", default="haplonet.admix",
 		help="Output path/name ('haplonet.admix')")
-	parser_a.add_argument("--tole", type=float, default=0.1,
-		help="Difference in loglike between args.check iterations (0.1)")
-	parser_a.add_argument("--tole_q", type=float, default=1e-6,
-		help="Tolerance for convergence of Q matrix (1e-6)")
-	parser_a.add_argument("--no_accel", action="store_true",
-		help="Turn off SqS3 acceleration")
+	parser_a.add_argument("--tole", type=float, default=0.5,
+		help="Difference in loglike between args.check iterations (0.5)")
+	parser_a.add_argument("--training",
+		help="Path to sample inclusion file to train full model")
+	parser_a.add_argument("--supervised",
+		help="Path to ancestry assignment file for semi-supervised model")
 
 	# haplonet pca
 	parser_p = subparsers.add_parser("pca")
@@ -94,8 +92,8 @@ def main():
 		help="Filelist with paths to multiple log-likelihood files")
 	parser_p.add_argument("-l", "--like",
 		help="Path to single log-likelihood file")
-	parser_p.add_argument("-F", "--filter", type=float, default=1e-6,
-		help="Threshold for haplotype cluster frequency (1e-6)")
+	parser_p.add_argument("-F", "--filter", type=float, default=0.01,
+		help="Threshold for haplotype cluster frequency (0.01)")
 	parser_p.add_argument("-e", "--n_eig", type=int, default=10,
 		help="Number of eigenvectors to extract (10)")
 	parser_p.add_argument("-c", "--cov", action="store_true",
@@ -143,17 +141,6 @@ def main():
 		help="Optimize individual alphas using SciPy")
 	parser_f.add_argument("--viterbi", action="store_true",
 		help="Compute and save viterbi decoding")
-
-	# haplonet convert
-	parser_c = subparsers.add_parser("convert")
-	parser_c.add_argument("-v", "--vcf",
-		help="Input vcf-file of genotypes")
-	parser_c.add_argument("-l", "--length", type=int,
-		help="Generate base positions for defined window length")
-	parser_c.add_argument("-w", "--windows", action="store_true",
-		help="Only save base positions of defined window length, no .npy output")
-	parser_c.add_argument("-o", "--out", default="input",
-		help="Output filepath")
 
 	# haplonet simulate
 	parser_s = subparsers.add_parser("simulate")
@@ -208,13 +195,6 @@ def main():
 		else:
 			from haplonet import fatashHMM
 			fatashHMM.main(args)
-	if sys.argv[1] == "convert":
-		if len(sys.argv) < 3:
-			parser_c.print_help()
-			sys.exit()
-		else:
-			from haplonet import convertVCF
-			convertVCF.main(args)
 	if sys.argv[1] == "simulate":
 		if len(sys.argv) < 3:
 			parser_s.print_help()
@@ -222,6 +202,7 @@ def main():
 		else:
 			from haplonet import haploSim
 			haploSim.main(args)
+
 
 
 ##### Define main #####

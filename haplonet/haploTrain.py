@@ -6,18 +6,20 @@ Variational Autoencoder framework for modelling haplotype structure.
 __author__ = "Jonas Meisner"
 
 # Libraries
+import os
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from cyvcf2 import VCF
 from torch.utils.data import DataLoader
-import os
 from datetime import datetime
 from time import time
 from math import ceil, log, pi
 
 # Import own scripts
 from haplonet import haploModel
+from haplonet import shared_cy
 
 # Global variables
 LOG2PI = log(2*pi)
@@ -78,25 +80,25 @@ def valid(loader, model, beta, device):
 ##### Main function #####
 def main(args, deaf):
 	### HaploNet
-	print("HaploNet v0.4")
+	print("HaploNet v0.5")
 	print("Gaussian Mixture Variational Autoencoder.")
-	assert (args.geno is not None) or (args.vcf is not None), \
-			"No input data (--geno or --vcf)!"
+	assert args.vcf is not None, \
+		"Please provide phased genotype file (--bcf or --vcf)!"
 
 	# Create log-file of arguments
 	full = vars(args)
 	with open(args.out + ".args", "w") as f:
-		f.write("HaploNet v0.4\n")
+		f.write("HaploNet v0.5\n")
 		f.write("haplonet train\n")
-		f.write("Time: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "\n")
-		f.write("Directory: " + str(os.getcwd()) + "\n")
+		f.write(f"Time: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
+		f.write(f"Directory: {os.getcwd()}\n")
 		f.write("Options:\n")
 		for key in full:
 			if full[key] != deaf[key]:
 				if type(full[key]) is bool:
-					f.write("\t--" + str(key) + "\n")
+					f.write(f"\t--{key}\n")
 				else:
-					f.write("\t--" + str(key) + " " + str(full[key]) + "\n")
+					f.write(f"\t--{key} {full[key]}\n")
 	del full, deaf
 
 	# Setup parameters
@@ -120,16 +122,14 @@ def main(args, deaf):
 			os.makedirs(args.out + "/models")
 
 
-	### Read genotype matrix or VCF-file
-	print("\rLoading data...", end="")
-	if args.geno is not None:
-		G = np.load(args.geno)
-	else:
-		import allel
-		vcf = allel.read_vcf(args.vcf)
-		G = vcf['calldata/GT'].reshape(vcf['calldata/GT'].shape[0], -1)
-	m, n = G.shape
-	print("\rLoaded {} chromosomes and {} variants.".format(n, m))
+	### Read VCF/BCF file
+	print("\rLoading VCF/BCF file...", end="")
+	v_file = VCF(args.vcf, threads=args.threads)
+	n = 2*len(v_file.samples)
+	G = shared_cy.readVCF(v_file, n//2)
+	del v_file
+	m = G.shape[0]
+	print(f"\rLoaded phased genotype data: {n} haplotypes and {m} SNPs.")
 
 
 	### Construct containers
@@ -141,11 +141,11 @@ def main(args, deaf):
 		winList = [w*args.x_dim for w in range(nSeg)]
 		winList.append(m)
 		winList = np.array(winList, dtype=int)
-		print("Training {} windows of fixed size ({}).\n".format(nSeg, args.x_dim))
+		print(f"Training {nSeg} windows of fixed size ({args.x_dim}).\n")
 	else: # Window size based on e.g. LD
 		winList = np.genfromtxt(args.windows, dtype=int)
 		nSeg = winList.shape[0] - 1
-		print("Training {} windows (provided).\n".format(nSeg))
+		print(f"Training {nSeg} windows (provided).\n")
 	L = torch.empty((nSeg, n, args.y_dim)) # Log-likelihoods
 	Y_eye = torch.eye(args.y_dim).to(dev) # Cluster labels
 	if args.latent:
@@ -159,7 +159,7 @@ def main(args, deaf):
 	### Training
 	for i in range(nSeg):
 		st = time()
-		print("Window {}/{}".format(i+1, nSeg))
+		print(f"Window {i+1}/{nSeg}")
 
 		# Load segment
 		segG = torch.from_numpy(G[winList[i]:winList[i+1]].T.astype(np.float32, order="C"))
@@ -223,8 +223,9 @@ def main(args, deaf):
 				if it == (batch_n - 1):
 					L[i,it*args.batch:,:] = batch_l.to(torch.device("cpu")).detach()
 				else:
-					L[i,it*args.batch:(it+1)*args.batch,:] = batch_l.to(\
+					L[i,it*args.batch:(it+1)*args.batch,:] = batch_l.to(
 						torch.device("cpu")).detach()
+				
 				# Subsplit log-likelihoods
 				if args.subsplit > 0:
 					batch_ls = model.subsplitLikelihoods(batch_x, Y_eye, args.subsplit)
@@ -245,32 +246,33 @@ def main(args, deaf):
 						Z[i,it*args.batch:,:] = batch_z.to(torch.device("cpu")).detach()
 						V[i,it*args.batch:,:] = batch_v.to(torch.device("cpu")).detach()
 					else:
-						Y[i,it*args.batch:(it+1)*args.batch,:] = batch_y.to(\
-							torch.device("cpu")).detach()
-						Z[i,it*args.batch:(it+1)*args.batch,:] = batch_z.to(\
-							torch.device("cpu")).detach()
-						V[i,it*args.batch:(it+1)*args.batch,:] = batch_v.to(\
-							torch.device("cpu")).detach()
+						Y[i,it*args.batch:(it+1)*args.batch,:] = \
+							batch_y.to(torch.device("cpu")).detach()
+						Z[i,it*args.batch:(it+1)*args.batch,:] = \
+							batch_z.to(torch.device("cpu")).detach()
+						V[i,it*args.batch:(it+1)*args.batch,:] = \
+							batch_v.to(torch.device("cpu")).detach()
 		if args.save_models:
 			model.to(torch.device("cpu"))
-			torch.save(model.state_dict(), args.out + "/models/seg" + str(i) + ".pt")
+			torch.save(model.state_dict(), f"{args.out}/models/seg{i}.pt")
 
 		# Release memory
 		del segG
 
 	### Saving tensors
-	np.save(args.out + ".loglike", L.numpy())
-	print("Saved log-likelihoods as " + args.out + ".loglike.npy")
+	np.save(f"{args.out}.loglike", L.numpy())
+	print(f"Saved log-likelihoods as {args.out}.loglike.npy")
 	if args.latent:
-		np.save(args.out + ".y", Y.numpy())
-		print("Saved Categorical parameters as " + args.out + ".y.npy")
-		np.save(args.out + ".z", Z.numpy())
-		np.save(args.out + ".v", V.numpy())
-		print("Saved Gaussian parameters as " + args.out + ".{z,v}.npy")
+		np.save(f"{args.out}.y", Y.numpy())
+		print(f"Saved Categorical parameters as {args.out}.y.npy")
+		np.save(f"{args.out}.z", Z.numpy())
+		np.save(f"{args.out}.v", V.numpy())
+		print(f"Saved Gaussian parameters as {args.out}.(z,v).npy")
 	if args.subsplit > 0:
-		np.save(args.out + ".split.loglike", Ls.numpy())
-		print("Saved subsplit log-likelihoods as " + args.out + ".split.loglike.npy")
+		np.save(f"{args.out}.split.loglike", Ls.numpy())
+		print(f"Saved subsplit log-likelihoods as {args.out}.split.loglike.npy")
 	print("\n")
+
 
 
 ##### Main exception #####

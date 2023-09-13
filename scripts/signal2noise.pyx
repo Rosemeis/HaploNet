@@ -1,12 +1,10 @@
+# cython: language_level=3, boundscheck=False, wraparound=False, initializedcheck=False, cdivision=True
 import numpy as np
 cimport numpy as np
 from cython.parallel import prange
-from cython import boundscheck, wraparound
 from libc.math cimport sqrt, log
 
 # Estimate mean within population distance
-@boundscheck(False)
-@wraparound(False)
 cpdef float withinDist(float[:,::1] Q, int[::1] L, int pop):
     cdef int N = Q.shape[0]
     cdef int K = Q.shape[1]
@@ -26,8 +24,6 @@ cpdef float withinDist(float[:,::1] Q, int[::1] L, int pop):
     return sum/float(c)
 
 # Estimate mean between population distance
-@boundscheck(False)
-@wraparound(False)
 cpdef float betweenDist(float[:,::1] Q, int[::1] L, int pop):
     cdef int N = Q.shape[0]
     cdef int K = Q.shape[1]

@@ -40,12 +40,11 @@ def main(args):
 	Y_eye = torch.eye(Y.shape[2]) # Cluster labels
 
 	# Simulating chromosomes
-	print("Simulating {} chromosomes for each of {} probability vectors".format(\
-		args.n_sim, Y.shape[1]))
+	print(f"Simulating {args.n_sim} chromosomes for each of {Y.shape[1]} probability vectors")
 	for i in range(nSeg):
-		print("\rWindow {}/{}".format(i+1, nSeg), end="")
+		print(f"\rWindow {i+1}/{nSeg}", end="")
 		# Load weights and infer model parameters
-		weights = torch.load(args.models + "/seg" + str(i) + ".pt")
+		weights = torch.load(f"{args.models}/seg{i}.pt")
 		h_dim, x_dim = weights["classify.0.weight"].size()
 		z_dim, y_dim = weights["prior_m.weight"].size()
 		assert Y.shape[2] == y_dim, "Haplotype cluster dimension doesn't match!"
@@ -71,15 +70,16 @@ def main(args):
 	print("")
 		
 	# Saving tensors
-	np.save(args.out + ".loglike", L.numpy())
-	print("Saved log-likelihoods as " + args.out + ".loglike.npy")
+	np.save(f"{args.out}.loglike", L.numpy())
+	print(f"Saved log-likelihoods as {args.out}.loglike.npy")
 	if args.subsplit > 0:
-		np.save(args.out + ".split.loglike", Ls.numpy())
-		print("Saved subsplit log-likelihoods as " + args.out + ".split.loglike.npy")
+		np.save(f"{args.out}.split.loglike", Ls.numpy())
+		print(f"Saved subsplit log-likelihoods as {args.out}.split.loglike.npy")
 	X = np.concatenate(X_list, axis=0)
-	np.save(args.out + ".haplotypes", X)
-	print("Saved simulated chromosomes as " + args.out + ".haplotypes.npy")
+	np.save(f"{args.out}.haplotypes", X)
+	print(f"Saved simulated chromosomes as {args.out}.haplotypes.npy")
 	print("\n")
+
 
 
 ##### Main exception #####
