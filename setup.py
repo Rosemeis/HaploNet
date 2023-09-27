@@ -11,7 +11,8 @@ extensions = [
 		include_dirs=[numpy.get_include()],
 		language="c++",
 		define_macros=[('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION')]
-	), Extension(
+	), 
+	Extension(
 		"haplonet.lahmm_cy",
 		["haplonet/lahmm_cy.pyx"],
 		extra_compile_args=['-fopenmp', '-g0'],
