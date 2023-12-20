@@ -99,6 +99,7 @@ def main(args):
 		assert np.max(Q_anc) <= args.K, "Wrong supervised ancestry assignment!"
 		print(f"{np.sum(Q_anc > 0)} individuals with fixed ancestry.")
 		shared_cy.setupQ(Q, Q_anc)
+		shared_cy.setupF(L, F, F_new, Q_anc, np.max(Q_anc))
 	else:
 		Q_anc = None
 

@@ -72,6 +72,30 @@ cpdef void setupQ(double[:,::1] Q, int[::1] Q_anc) nogil:
 				else:
 					Q[i,k] = 1e-7
 
+# Setup semi-supervised F
+cpdef void setupF(float[:,:,::1] L, double[:,:,::1] F, double[:,:,::1] F_new, \
+		int[::1] Q_anc, int K) nogil:
+	cdef:
+		int W = L.shape[0]
+		int N = L.shape[1]
+		int C = L.shape[2]
+		int w, c, k, n
+		double sumY
+	for w in range(W)
+		for k in range(K):
+			sumY = 0.0
+			for i in range(N):
+				n = 0
+				if (Q_anc[i//2]-1) == k:
+					n = n + 1
+					for c in range(C):
+						F_new[w,k,c] += L[w,i,c]
+			for c in range(C):
+				F_new[w,k,c] /= <double>n
+				sumY = sumY + F_new[w,k,c]
+			for c in range(C):
+				F[w,k,c] = F_new[w,k,c]/sumY
+
 # Main EM iteration
 cpdef void emLoop(float[:,:,::1] L, double[:,:,::1] F, double[:,::1] Q, \
 		double[:,:,::1] F_new, double[:,:,::1] Q_new, int t) nogil:
