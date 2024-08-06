@@ -81,7 +81,7 @@ cpdef void setupF(float[:,:,::1] L, double[:,:,::1] F, double[:,:,::1] F_new, \
 		int C = L.shape[2]
 		int w, c, k, n
 		double sumY
-	for w in range(W)
+	for w in range(W):
 		for k in range(K):
 			sumY = 0.0
 			for i in range(N):
